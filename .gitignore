@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+.AppleDouble
+._*
+.Spotlight-V100
+.Trashes
+.VolumeIcon.icns
+
+# Go
+/bin/
+/build/
+*.exe
+*.test
+*.out
+
+# env files
+.env
+.env.*
+
+# editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# logs and temp
+*.log
+tmp/
+temp/
