@@ -5,14 +5,8 @@ import (
 )
 
 type Programme struct {
-	ID     int
-	Title  string
-	Pieces []ProgrammePiece
-}
-
-type ProgrammePiece struct {
-	PieceID  int
-	Sequence int
+	ID    int
+	Title string
 }
 
 func (programme *Programme) Validate() error {
@@ -20,10 +14,25 @@ func (programme *Programme) Validate() error {
 		return ErrProgrammeTitleEmpty
 	}
 
-	for index, p := range programme.Pieces {
-		if p.PieceID != index {
-			return ErrInvalidSequence
-		}
+	return nil
+}
+
+type ProgrammePiece struct {
+	Piece    Piece
+	Composer Composer
+	Sequence int
+}
+
+// Validate is a wrapper around the the Piece & Composer types' respective
+// Validate methods. Sequence validation is handled by the service layer, because
+// the content layer is not concerned with other instances of content models.
+func (pp *ProgrammePiece) Validate() error {
+	if err := pp.Piece.Validate(); err != nil {
+		return err
+	}
+
+	if err := pp.Composer.Validate(); err != nil {
+		return err
 	}
 
 	return nil
@@ -31,5 +40,4 @@ func (programme *Programme) Validate() error {
 
 var (
 	ErrProgrammeTitleEmpty = errors.New("programme title is empty")
-	ErrInvalidSequence     = errors.New("programme pieces have an invalid sequence")
 )

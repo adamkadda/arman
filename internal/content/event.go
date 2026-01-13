@@ -13,20 +13,22 @@ const (
 	StatusArchived  Status = "archived"
 )
 
-type Event struct {
-	ID         int
-	Title      string
-	Date       *time.Time
-	TicketLink *string
-	VenueID    *int
-	Status     Status
-	Notes      *string
+type Timeframe string
 
-	// NOTE: These are optional fields. Despite them not being part of the domain
-	// logic, I've included them because it's a pain to keep them separate since
-	// they exist at the persistence stage, but not prior to (while in memory).
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
+const (
+	TimeframePast     Timeframe = "past"
+	TimeframeUpcoming Timeframe = "upcoming"
+)
+
+type Event struct {
+	ID          int
+	Title       string
+	Date        *time.Time
+	TicketLink  *string
+	VenueID     *int
+	ProgrammeID *int
+	Status      Status
+	Notes       *string
 }
 
 func (event *Event) Validate() error {
@@ -43,6 +45,17 @@ func (event *Event) Validate() error {
 	return nil
 }
 
+func (event *Event) Mutable() error {
+	switch event.Status {
+	case StatusDraft:
+		return nil
+	case StatusPublished, StatusArchived:
+		return ErrEventImmutable
+	default:
+		return ErrInvalidEventStatus
+	}
+}
+
 func (event *Event) Publishable() error {
 	switch {
 	case event.Date == nil:
@@ -51,6 +64,8 @@ func (event *Event) Publishable() error {
 		return ErrEventTicketLinkEmpty
 	case event.VenueID == nil:
 		return ErrEventVenueEmpty
+	case event.ProgrammeID == nil:
+		return ErrEventProgrammeEmpty
 	default:
 		return nil
 	}
@@ -62,4 +77,6 @@ var (
 	ErrEventDateEmpty       = errors.New("event date is empty")
 	ErrEventTicketLinkEmpty = errors.New("event ticket link is empty")
 	ErrEventVenueEmpty      = errors.New("event venue is empty")
+	ErrEventProgrammeEmpty  = errors.New("event programme is empty")
+	ErrEventImmutable       = errors.New("event is immutable, editing forbidden")
 )

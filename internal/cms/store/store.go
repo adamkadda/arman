@@ -5,17 +5,15 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Executor is an interface for pgx.Tx and pgxpool.Pool (in practice). It's purpose
 // is to make it easier for stores to execute queries with or without transactions.
 type Executor interface {
-	Exec(ctx context.Context, sql string, args ...any) (any, error)
-	Query(ctx context.Context, sql string, args ...any) (any, error)
-	QueryRow(ctx context.Context, sql string, args ...any) (any, error)
-}
-
-type DB interface {
-	ExecuteTx(ctx context.Context, fn func(tx Executor) error) error
-	Executor() Executor
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
