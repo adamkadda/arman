@@ -39,5 +39,7 @@ func (pp *ProgrammePiece) Validate() error {
 }
 
 var (
-	ErrProgrammeTitleEmpty = errors.New("programme title is empty")
+	ErrProgrammeTitleEmpty  = errors.New("programme title is empty")
+	ErrProgrammeHasNoPieces = errors.New("programme has no pieces")
+	ErrProgrammeImmutable   = errors.New("programme is immutable, bc it's in use")
 )

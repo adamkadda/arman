@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+// Status is a type that represents the three possible variants an Event's status
+// can hold. Drafted events are the only mutable events, but this restriction on
+// mutability does not apply to the Notes field. Notes can be edited regardless of
+// Event status.
+//
+// The mutability restriction extends to the Programmes they reference. That means
+// that a Programme referenced by at least one Published event becomes immutable.
+// This mutability restriction does not extend to Pieces, Composers, and Venues.
 type Status string
 
 const (
@@ -13,6 +21,12 @@ const (
 	StatusArchived  Status = "archived"
 )
 
+// Timeframe is a type that represents when a Event's date occurs, relative to today.
+// It is used primarily as a filter, but it holds business meaning because public
+// users will often interact with Events filtered by their timeframe.
+//
+// Timeframe is not directly embedded into the Event, but is instead inferred by
+// by looking at an Event's date.
 type Timeframe string
 
 const (
@@ -45,6 +59,8 @@ func (event *Event) Validate() error {
 	return nil
 }
 
+// Mutable determines whether an Event is mutable by checking its status.
+// Draft events are the only mutable events.
 func (event *Event) Mutable() error {
 	switch event.Status {
 	case StatusDraft:
@@ -56,6 +72,11 @@ func (event *Event) Mutable() error {
 	}
 }
 
+// Publishable determines whether an Event is publishable by checking for
+// completeness. If an Event is missing a mandatory field, Publishable returns
+// the corresponding error.
+//
+// If an Event is publishable (i.e. it is complete), Publishable returns nil.
 func (event *Event) Publishable() error {
 	switch {
 	case event.Date == nil:
