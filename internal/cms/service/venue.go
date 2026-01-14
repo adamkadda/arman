@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,15 +29,13 @@ func (s *VenueService) Get(
 	return venueStore.Get(ctx, id)
 }
 
-// TODO: Replace List with ListWithDetails
-
-// List returns an array of Venues, sorted by id.
+// List returns an array of VenueWithDetails, sorted by id.
 func (s *VenueService) List(
 	ctx context.Context,
-) ([]content.Venue, error) {
+) ([]models.VenueWithDetails, error) {
 	venueStore := store.NewVenueStore(s.pool)
 
-	return venueStore.List(ctx)
+	return venueStore.ListWithDetails(ctx)
 }
 
 // Update attempts to update a Venue.

@@ -43,9 +43,9 @@ func (s *PieceStore) GetWithDetails(
 	return nil, nil
 }
 
-func (s *PieceStore) List(
+func (s *PieceStore) ListWithDetails(
 	ctx context.Context,
-) ([]content.Piece, error) {
+) ([]models.PieceWithDetails, error) {
 	// TODO: Prepare query
 
 	// TODO: Execute query

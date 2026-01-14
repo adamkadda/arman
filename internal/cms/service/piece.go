@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,14 +29,13 @@ func (s *PieceService) Get(
 	return pieceStore.Get(ctx, id)
 }
 
-// TODO: Replace List with ListWithDetails.
-
-// List returns an array of Pieces, sorted by id.
+// List returns an array of PieceWithDetails, sorted by id.
 func (s *PieceService) List(
 	ctx context.Context,
-) ([]content.Piece, error) {
+) ([]models.PieceWithDetails, error) {
 	pieceStore := store.NewPieceStore(s.pool)
-	return pieceStore.List(ctx)
+
+	return pieceStore.ListWithDetails(ctx)
 }
 
 // Update attempts to update a Piece.

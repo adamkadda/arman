@@ -43,9 +43,9 @@ func (s *VenueStore) GetWithDetails(
 	return nil, nil
 }
 
-func (s *VenueStore) List(
+func (s *VenueStore) ListWithDetails(
 	ctx context.Context,
-) ([]content.Venue, error) {
+) ([]models.VenueWithDetails, error) {
 	// TODO: Prepare query
 
 	// TODO: Execute query

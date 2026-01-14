@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,15 +29,13 @@ func (s *ComposerService) Get(
 	return composerStore.Get(ctx, id)
 }
 
-// TODO: Replace List with ListWithDetails.
-
-// List returns an array of Composers, sorted by id.
+// List returns an array of ComposerWithDetails, sorted by id.
 func (s *ComposerService) List(
 	ctx context.Context,
-) ([]content.Composer, error) {
+) ([]models.ComposerWithDetails, error) {
 	composerStore := store.NewComposerStore(s.pool)
 
-	return composerStore.List(ctx)
+	return composerStore.ListWithDetails(ctx)
 }
 
 // Update attempts to update a Composer.

@@ -46,8 +46,8 @@ func (s *ProgrammeService) GetWithPieces(
 	return programme, nil
 }
 
-// ListWithDetails returns an array of ProgrammeWithDetails, sorted by id.
-func (s *ProgrammeService) ListWithDetails(
+// List returns an array of ProgrammeWithDetails, sorted by id.
+func (s *ProgrammeService) List(
 	ctx context.Context,
 	id int,
 ) ([]models.ProgrammeWithDetails, error) {

@@ -43,9 +43,9 @@ func (s *ComposerStore) GetWithDetails(
 	return nil, nil
 }
 
-func (s *ComposerStore) List(
+func (s *ComposerStore) ListWithDetails(
 	ctx context.Context,
-) ([]content.Composer, error) {
+) ([]models.ComposerWithDetails, error) {
 	// TODO: Prepare query
 
 	// TODO: Execute query
