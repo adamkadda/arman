@@ -30,6 +30,19 @@ func (s *ProgrammeStore) Get(
 	return nil, nil
 }
 
+func (s *ProgrammeStore) GetWithDetails(
+	ctx context.Context,
+	id int,
+) (*models.ProgrammeWithDetails, error) {
+	// TODO: Prepare query
+
+	// TODO: Execute query
+
+	// TODO: Return result
+
+	return nil, nil
+}
+
 // ListWithDetails returns a list of programmes with additional details. This method
 // was the alternative to an N+1 query approach of making multiple queries for each
 // Programme. It's a tradeoff between performance and adherence to a (strict) clean

@@ -43,11 +43,11 @@ func (s *EventStore) GetWithTimestamps(
 	return nil, nil
 }
 
-func (s *EventStore) List(
+func (s *EventStore) ListWithTimestamps(
 	ctx context.Context,
 	status *content.Status,
 	timeframe *content.Timeframe,
-) ([]content.Event, error) {
+) ([]models.EventWithTimestamps, error) {
 	// TODO: Prepare query
 
 	// TODO: Execute query
@@ -97,6 +97,19 @@ func (s *EventStore) Publish(
 }
 
 func (s *EventStore) Archive(
+	ctx context.Context,
+	id int,
+) error {
+	// TODO: Prepare query
+
+	// TODO: Execute query
+
+	// TODO: Return result
+
+	return nil
+}
+
+func (s *EventStore) Delete(
 	ctx context.Context,
 	id int,
 ) error {

@@ -19,15 +19,7 @@ func NewEventService(pool *pgxpool.Pool) *EventService {
 	}
 }
 
-func (s *EventService) GetWithTimestamps(
-	ctx context.Context,
-	id int,
-) (*models.EventWithTimestamps, error) {
-	eventStore := store.NewEventStore(s.pool)
-
-	return eventStore.GetWithTimestamps(ctx, id)
-}
-
+// GetWithProgramme returns an EventWithProgramme by Event id.
 func (s *EventService) GetWithProgramme(
 	ctx context.Context,
 	id int,
@@ -64,21 +56,30 @@ func (s *EventService) GetWithProgramme(
 	return event, nil
 }
 
-func (s *EventService) List(
+// ListWithTimestamp returns an array of EventWithTimestamp, sorted by their
+// Event ids.
+//
+// ListWithTimestamp accepts two optional filters for status and timeframe.
+// If you don't with to pass a filter, pass nil instead. See the content package's
+// Event definition to better understand what these filters mean.
+func (s *EventService) ListWithTimestamp(
 	ctx context.Context,
 	status *content.Status,
 	timeframe *content.Timeframe,
-) ([]content.Event, error) {
+) ([]models.EventWithTimestamps, error) {
 	eventStore := store.NewEventStore(s.pool)
 
-	return eventStore.List(ctx, status, timeframe)
+	return eventStore.ListWithTimestamps(ctx, status, timeframe)
 }
 
+// Update attempts to update an Event's metadata, and returns an
+// EventWithProgramme upon success.
+//
+// Update first checks for mutability, then validity.
 func (s *EventService) Update(
 	ctx context.Context,
 	e content.Event,
 ) (*models.EventWithProgramme, error) {
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -93,6 +94,10 @@ func (s *EventService) Update(
 	}
 
 	if err = event.Mutable(); err != nil {
+		return nil, err
+	}
+
+	if err = event.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -130,42 +135,9 @@ func (s *EventService) Update(
 	return eventWithProgramme, nil
 }
 
-func (s *EventService) Draft(
-	ctx context.Context,
-	id int,
-) error {
-	eventStore := store.NewEventStore(s.pool)
-
-	return eventStore.Draft(ctx, id)
-}
-
-func (s *EventService) Publish(
-	ctx context.Context,
-	id int,
-) error {
-	eventStore := store.NewEventStore(s.pool)
-
-	event, err := eventStore.Get(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	if err = event.Publishable(); err != nil {
-		return err
-	}
-
-	return eventStore.Publish(ctx, id)
-}
-
-func (s *EventService) Archive(
-	ctx context.Context,
-	id int,
-) error {
-	eventStore := store.NewEventStore(s.pool)
-
-	return eventStore.Archive(ctx, id)
-}
-
+// UpdateNotes attempts to update an Event's notes by id. As noted in the
+// content package, Event notes are not subject to mutability constraints unlike
+// other Event fields.
 func (s *EventService) UpdateNotes(
 	ctx context.Context,
 	id int,
@@ -179,4 +151,79 @@ func (s *EventService) UpdateNotes(
 	}
 
 	return eventStore.Update(ctx, event)
+}
+
+// Draft attempts to draft an event by id.
+func (s *EventService) Draft(
+	ctx context.Context,
+	id int,
+) error {
+	eventStore := store.NewEventStore(s.pool)
+
+	return eventStore.Draft(ctx, id)
+}
+
+// Publish attempts to publish an event by id. It checks for validity,
+// then it checks whether it is publishable.
+func (s *EventService) Publish(
+	ctx context.Context,
+	id int,
+) error {
+	eventStore := store.NewEventStore(s.pool)
+
+	event, err := eventStore.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if err = event.Validate(); err != nil {
+		return err
+	}
+
+	programmeStore := store.NewProgrammeStore(s.pool)
+
+	programme, err := programmeStore.GetWithDetails(ctx, *event.ProgrammeID)
+	if err != nil {
+		return err
+	}
+
+	if programme.PieceCount < 1 {
+		return content.ErrProgrammeHasNoPieces
+	}
+
+	if err = event.Publishable(); err != nil {
+		return err
+	}
+
+	return eventStore.Publish(ctx, id)
+}
+
+// Archive attempts to archive an event by id.
+func (s *EventService) Archive(
+	ctx context.Context,
+	id int,
+) error {
+	eventStore := store.NewEventStore(s.pool)
+
+	return eventStore.Archive(ctx, id)
+}
+
+// Delete attempts to delete an event by id. Published Events are immutable,
+// and therefore cannot be deleted.
+func (s *EventService) Delete(
+	ctx context.Context,
+	id int,
+) error {
+	eventStore := store.NewEventStore(s.pool)
+
+	event, err := eventStore.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if event.Status != content.StatusPublished {
+		return content.ErrEventImmutable
+	}
+
+	return eventStore.Delete(ctx, id)
 }
