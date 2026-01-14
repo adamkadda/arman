@@ -1,6 +1,4 @@
-// The handler package represents the HTTP layer.
-// The objective is to keep handlers nice and narrow. Generally, handlers should
-// only interact with (interfaces to) services.
+// The handler package represents the HTTP layer, I try to keep it nice and narrow.
 package handler
 
 import (
@@ -12,7 +10,7 @@ import (
 	"github.com/adamkadda/arman/pkg/logging"
 )
 
-// respondJSON is a convenience function easier struct marshalling and
+// respondJSON is a convenience function for easier struct marshalling and
 // preparing responses.
 //
 // While pre-marshalling adds CPU and memory overhead, it allows us to return
@@ -28,7 +26,7 @@ func respondJSON(
 	body, err := json.Marshal(data)
 	if err != nil {
 		l := logging.FromContext(ctx)
-		l.Error("Failed to marshal JSON", slog.String("error", err.Error()))
+		l.Error("failed to marshal JSON", slog.String("error", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
