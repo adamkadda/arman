@@ -99,5 +99,6 @@ var (
 	ErrEventTicketLinkEmpty = errors.New("event ticket link is empty")
 	ErrEventVenueEmpty      = errors.New("event venue is empty")
 	ErrEventProgrammeEmpty  = errors.New("event programme is empty")
-	ErrEventImmutable       = errors.New("event is immutable, editing forbidden")
+	ErrEventImmutable       = errors.New("event is immutable")
+	ErrEventProtected       = errors.New("event protected; deletion forbidden")
 )

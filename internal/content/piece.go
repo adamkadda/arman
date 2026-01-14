@@ -18,4 +18,7 @@ func (piece *Piece) Validate() error {
 	return nil
 }
 
-var ErrPieceTitleEmpty = errors.New("piece title is empty")
+var (
+	ErrPieceTitleEmpty = errors.New("piece title is empty")
+	ErrPieceProtected  = errors.New("piece protected; deletion forbidden")
+)

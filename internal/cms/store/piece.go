@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 
+	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/content"
 )
 
@@ -20,6 +21,19 @@ func (s *PieceStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Piece, error) {
+	// TODO: Prepare query
+
+	// TODO: Execute query
+
+	// TODO: Return result
+
+	return nil, nil
+}
+
+func (s *PieceStore) GetWithDetails(
+	ctx context.Context,
+	id int,
+) (*models.PieceWithDetails, error) {
 	// TODO: Prepare query
 
 	// TODO: Execute query

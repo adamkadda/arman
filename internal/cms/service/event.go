@@ -208,8 +208,9 @@ func (s *EventService) Archive(
 	return eventStore.Archive(ctx, id)
 }
 
-// Delete attempts to delete an event by id. Published Events are immutable,
-// and therefore cannot be deleted.
+// Delete attempts to delete an event by id.
+//
+// Published Events are protected against deletion.
 func (s *EventService) Delete(
 	ctx context.Context,
 	id int,
@@ -222,7 +223,7 @@ func (s *EventService) Delete(
 	}
 
 	if event.Status != content.StatusPublished {
-		return content.ErrEventImmutable
+		return content.ErrEventProtected
 	}
 
 	return eventStore.Delete(ctx, id)

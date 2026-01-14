@@ -28,6 +28,8 @@ func (s *ComposerService) Get(
 	return composerStore.Get(ctx, id)
 }
 
+// TODO: Replace List with ListWithDetails.
+
 // List returns an array of Composers, sorted by id.
 func (s *ComposerService) List(
 	ctx context.Context,
@@ -57,13 +59,22 @@ func (s *ComposerService) Update(
 }
 
 // Delete attempts to delete a Composer by id.
+//
+// Composers with at least one Piece are protected against deletion.
 func (s *ComposerService) Delete(
 	ctx context.Context,
 	id int,
 ) error {
 	composerStore := store.NewComposerStore(s.pool)
 
-	// TODO: Prevent deletion of Composers with Pieces.
+	composerWithDetails, err := composerStore.GetWithDetails(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if composerWithDetails.PieceCount > 0 {
+		return content.ErrComposerProtected
+	}
 
 	return composerStore.Delete(ctx, id)
 }

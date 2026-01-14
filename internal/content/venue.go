@@ -25,4 +25,5 @@ func (venue *Venue) Validate() error {
 var (
 	ErrVenueFullAddressEmpty  = errors.New("venue full address is empty")
 	ErrVenueShortAddressEmpty = errors.New("venue short address is empty")
+	ErrVenueProtected         = errors.New("venue protected; deletion forbidden")
 )

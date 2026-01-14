@@ -28,6 +28,8 @@ func (s *PieceService) Get(
 	return pieceStore.Get(ctx, id)
 }
 
+// TODO: Replace List with ListWithDetails.
+
 // List returns an array of Pieces, sorted by id.
 func (s *PieceService) List(
 	ctx context.Context,
@@ -56,13 +58,23 @@ func (s *PieceService) Update(
 }
 
 // Delete attempts to delete a Piece by id.
+//
+// Pieces that are a part of at least one Programme are protected against
+// deletion.
 func (s *PieceService) Delete(
 	ctx context.Context,
 	id int,
 ) error {
 	pieceStore := store.NewPieceStore(s.pool)
 
-	// TODO: Prevent deletion of Pieces referenced by Programmes.
+	pieceWithDetails, err := pieceStore.GetWithDetails(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if pieceWithDetails.ProgrammeCount > 0 {
+		return content.ErrPieceProtected
+	}
 
 	return pieceStore.Delete(ctx, id)
 }

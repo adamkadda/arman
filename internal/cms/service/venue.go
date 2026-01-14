@@ -28,6 +28,8 @@ func (s *VenueService) Get(
 	return venueStore.Get(ctx, id)
 }
 
+// TODO: Replace List with ListWithDetails
+
 // List returns an array of Venues, sorted by id.
 func (s *VenueService) List(
 	ctx context.Context,
@@ -57,13 +59,23 @@ func (s *VenueService) Update(
 }
 
 // Delete attempts to delete a Venue by id.
+//
+// Venues that are referenced by at least one published Event are protected
+// against deletion.
 func (s *VenueService) Delete(
 	ctx context.Context,
 	id int,
 ) error {
 	venueStore := store.NewVenueStore(s.pool)
 
-	// TODO: Prevent deletion of Venues referenced by published Events.
+	venueWithDetails, err := venueStore.GetWithDetails(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if venueWithDetails.EventCount > 0 {
+		return content.ErrVenueProtected
+	}
 
 	return venueStore.Delete(ctx, id)
 }

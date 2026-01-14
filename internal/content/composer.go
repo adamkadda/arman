@@ -25,4 +25,5 @@ func (composer *Composer) Validate() error {
 var (
 	ErrComposerFullNameEmpty  = errors.New("composer full name is empty")
 	ErrComposerShortNameEmpty = errors.New("composer short name is empty")
+	ErrComposerProtected      = errors.New("composer protected; deletion forbidden")
 )

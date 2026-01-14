@@ -108,7 +108,7 @@ func (s *ProgrammeService) Update(
 // inferred by the array's order. Persistence checks are the store layer's
 // responsibility, so no programme piece validation happens at this layer.
 //
-// Programmes are immutable if it is referenced by at least one published Event.
+// Programmes are immutable if referenced by at least one published Event.
 //
 // UpdatePieces can only update the pieces of a Programme, not its metadata.
 // To update a Programme's metadata, see Update.
@@ -159,13 +159,23 @@ func (s *ProgrammeService) UpdatePieces(
 }
 
 // Delete attempts to delete a Programme by id.
+//
+// Programmes referenced by at least one published Event are protected against
+// deletion.
 func (s *ProgrammeService) Delete(
 	ctx context.Context,
 	id int,
 ) error {
 	programmeStore := store.NewProgrammeStore(s.pool)
 
-	// TODO: Prevent deletion of Programmes referenced by published Events.
+	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if programmeWithDetails.EventCount > 0 {
+		return content.ErrProgrammeProtected
+	}
 
 	return programmeStore.Delete(ctx, id)
 }

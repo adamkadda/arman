@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 
+	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/content"
 )
 
@@ -20,6 +21,19 @@ func (s *ComposerStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Composer, error) {
+	// TODO: Prepare query
+
+	// TODO: Execute query
+
+	// TODO: Return result
+
+	return nil, nil
+}
+
+func (s *ComposerStore) GetWithDetails(
+	ctx context.Context,
+	id int,
+) (*models.ComposerWithDetails, error) {
 	// TODO: Prepare query
 
 	// TODO: Execute query
