@@ -131,9 +131,11 @@ func (w *loggingWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
 	if err != nil {
 		w.logger.Error(
-			"Failed to write response body",
+			"write response body failed",
 			slog.String("err", err.Error()),
 		)
+
+		return 0, err
 	}
 
 	w.size += n
@@ -167,7 +169,7 @@ func Middleware() func(http.Handler) http.Handler {
 			ctx := WithLogger(r.Context(), logger)
 			r = r.WithContext(ctx)
 
-			logger.Debug("Request started")
+			logger.Debug("request start")
 
 			lw := &loggingWriter{
 				ResponseWriter: w,
@@ -176,7 +178,7 @@ func Middleware() func(http.Handler) http.Handler {
 
 			next.ServeHTTP(lw, r)
 
-			logger.Debug("Request completed",
+			logger.Debug("request end",
 				slog.Group("response",
 					slog.Int("status", lw.statusCode),
 					slog.Int("size", lw.size),
