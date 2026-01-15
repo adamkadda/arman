@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
+	"github.com/adamkadda/arman/pkg/logging"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,15 +21,30 @@ func NewProgrammeService(pool *pgxpool.Pool) *ProgrammeService {
 	}
 }
 
-// GetWithPieces returns a Programme with its ProgrammePieces, sorted by sequence.
-func (s *ProgrammeService) GetWithPieces(
+// Get returns a Programme with its ProgrammePieces sorted by sequence.
+func (s *ProgrammeService) Get(
 	ctx context.Context,
 	id int,
 ) (*models.ProgrammeWithPieces, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "programme.get"),
+		slog.Int("programme_id", id),
+	)
+
+	logger.Info(
+		"get programme",
+	)
+
 	programmeStore := store.NewProgrammeStore(s.pool)
 
 	p, err := programmeStore.Get(ctx, id)
 	if err != nil {
+		logger.Error(
+			"get programme failed",
+			slog.String("step", "programme.get"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
@@ -35,6 +52,12 @@ func (s *ProgrammeService) GetWithPieces(
 
 	pp, err := programmePieceStore.ListByProgrammeID(ctx, id)
 	if err != nil {
+		logger.Error(
+			"list programme pieces failed",
+			slog.String("step", "programme_piece.list"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
@@ -51,9 +74,28 @@ func (s *ProgrammeService) List(
 	ctx context.Context,
 	id int,
 ) ([]models.ProgrammeWithDetails, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "programme.list"),
+	)
+
+	logger.Info(
+		"list programmes",
+	)
+
 	programmeStore := store.NewProgrammeStore(s.pool)
 
-	return programmeStore.ListWithDetails(ctx)
+	programmeList, err := programmeStore.ListWithDetails(ctx)
+	if err != nil {
+		logger.Error(
+			"list programmes failed",
+			slog.String("step", "programme.list"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return programmeList, nil
 }
 
 // Update attempts to update a Programme's metadata.
@@ -71,13 +113,33 @@ func (s *ProgrammeService) Update(
 	ctx context.Context,
 	p content.Programme,
 ) (*content.Programme, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "programme.update"),
+		slog.Int("programme_id", p.ID),
+	)
+
+	logger.Info(
+		"update programme",
+	)
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		logger.Error(
+			"begin transaction failed",
+			slog.String("step", "tx.begin"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
 	if err := p.Validate(); err != nil {
+		logger.Warn(
+			"validate programme rejected",
+			slog.String("reason", reason(err)),
+		)
+
 		return nil, err
 	}
 
@@ -85,16 +147,43 @@ func (s *ProgrammeService) Update(
 
 	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, p.ID)
 	if err != nil {
+		logger.Error(
+			"get programme with details failed",
+			slog.String("step", "programme.get_with_details"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
 	if programmeWithDetails.EventCount > 0 {
+		logger.Warn(
+			"update programme blocked",
+			slog.String("reason", reason(content.ErrProgrammeImmutable)),
+			slog.Int("event_count", programmeWithDetails.EventCount),
+		)
+
 		return nil, content.ErrProgrammeImmutable
 	}
 
 	programme, err := programmeStore.Update(ctx, p)
+	if err != nil {
+		logger.Error(
+			"update programme failed",
+			slog.String("step", "programme.update"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
 
 	if err = tx.Commit(ctx); err != nil {
+		logger.Error(
+			"commit transaction failed",
+			slog.String("step", "tx.commit"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
@@ -117,8 +206,23 @@ func (s *ProgrammeService) UpdatePieces(
 	id int,
 	ids []int,
 ) (*models.ProgrammeWithPieces, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "programme.update_pieces"),
+		slog.Int("programme_id", id),
+	)
+
+	logger.Info(
+		"update programme pieces",
+	)
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
+		logger.Error(
+			"begin transaction failed",
+			slog.String("step", "tx.begin"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
@@ -127,15 +231,33 @@ func (s *ProgrammeService) UpdatePieces(
 
 	p, err := programmeStore.Get(ctx, id)
 	if err != nil {
+		logger.Error(
+			"get programme failed",
+			slog.String("step", "programme.get"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
-	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, p.ID)
+	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, id)
 	if err != nil {
+		logger.Error(
+			"get programme with details failed",
+			slog.String("step", "programme.get_with_details"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
 	if programmeWithDetails.EventCount > 0 {
+		logger.Warn(
+			"update programme pieces blocked",
+			slog.String("reason", reason(content.ErrProgrammeImmutable)),
+			slog.Int("event_count", programmeWithDetails.EventCount),
+		)
+
 		return nil, content.ErrProgrammeImmutable
 	}
 
@@ -143,10 +265,22 @@ func (s *ProgrammeService) UpdatePieces(
 
 	pp, err := programmePieceStore.Update(ctx, id, ids)
 	if err != nil {
+		logger.Error(
+			"update programme pieces failed",
+			slog.String("step", "programme_piece.update"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
+		logger.Error(
+			"commit transaction failed",
+			slog.String("step", "tx.commit"),
+			slog.Any("error", err),
+		)
+
 		return nil, err
 	}
 
@@ -166,16 +300,48 @@ func (s *ProgrammeService) Delete(
 	ctx context.Context,
 	id int,
 ) error {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "programme.delete"),
+		slog.Int("programme_id", id),
+	)
+
+	logger.Info(
+		"delete programme",
+	)
+
 	programmeStore := store.NewProgrammeStore(s.pool)
 
 	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, id)
 	if err != nil {
+		logger.Error(
+			"get programme with details failed",
+			slog.String("step", "programme.get_with_details"),
+			slog.Any("error", err),
+		)
+
 		return err
 	}
 
 	if programmeWithDetails.EventCount > 0 {
+		logger.Warn(
+			"delete programme blocked",
+			slog.String("reason", reason(content.ErrProgrammeProtected)),
+			slog.Int("event_count", programmeWithDetails.EventCount),
+		)
+
 		return content.ErrProgrammeProtected
 	}
 
-	return programmeStore.Delete(ctx, id)
+	err = programmeStore.Delete(ctx, id)
+	if err != nil {
+		logger.Error(
+			"delete programme failed",
+			slog.String("step", "programme.delete"),
+			slog.Any("error", err),
+		)
+
+		return err
+	}
+
+	return nil
 }

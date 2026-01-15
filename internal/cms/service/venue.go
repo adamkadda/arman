@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
+	"github.com/adamkadda/arman/pkg/logging"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,18 +26,57 @@ func (s *VenueService) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Venue, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "venue.get"),
+		slog.Int("venue_id", id),
+	)
+
+	logger.Info(
+		"get venue",
+	)
+
 	venueStore := store.NewVenueStore(s.pool)
 
-	return venueStore.Get(ctx, id)
+	venue, err := venueStore.Get(ctx, id)
+	if err != nil {
+		logger.Error(
+			"get composer failed",
+			slog.String("step", "venuve.get"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return venue, nil
 }
 
 // List returns an array of VenueWithDetails, sorted by id.
 func (s *VenueService) List(
 	ctx context.Context,
 ) ([]models.VenueWithDetails, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "venue.list"),
+	)
+
+	logger.Info(
+		"list venues",
+	)
+
 	venueStore := store.NewVenueStore(s.pool)
 
-	return venueStore.ListWithDetails(ctx)
+	venueList, err := venueStore.ListWithDetails(ctx)
+	if err != nil {
+		logger.Error(
+			"list venues failed",
+			slog.String("step", "venue.list"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return venueList, nil
 }
 
 // Update attempts to update a Venue.
@@ -48,13 +89,38 @@ func (s *VenueService) Update(
 	ctx context.Context,
 	v content.Venue,
 ) (*content.Venue, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "venue.update"),
+		slog.Int("venue_id", v.ID),
+	)
+
+	logger.Info(
+		"update venue",
+	)
+
 	venueStore := store.NewVenueStore(s.pool)
 
 	if err := v.Validate(); err != nil {
+		logger.Warn(
+			"validate venue rejected",
+			slog.String("reason", reason(err)),
+		)
+
 		return nil, err
 	}
 
-	return venueStore.Update(ctx, v)
+	venue, err := venueStore.Update(ctx, v)
+	if err != nil {
+		logger.Error(
+			"update venue failed",
+			slog.String("step", "venue.update"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return venue, err
 }
 
 // Delete attempts to delete a Venue by id.
@@ -65,16 +131,52 @@ func (s *VenueService) Delete(
 	ctx context.Context,
 	id int,
 ) error {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "venue.delete"),
+		slog.Int("venue_id", id),
+	)
+
+	logger.Info(
+		"delete venue",
+	)
+
 	venueStore := store.NewVenueStore(s.pool)
 
 	venueWithDetails, err := venueStore.GetWithDetails(ctx, id)
 	if err != nil {
+		logger := logger.With(
+			slog.String("operation", "venue.get_with_details"),
+		)
+
+		logger.Error(
+			"get venue with details failed",
+			slog.String("step", "venue.get_with_details"),
+			slog.Any("error", err),
+		)
+
 		return err
 	}
 
 	if venueWithDetails.EventCount > 0 {
+		logger.Warn(
+			"delete venue blocked",
+			slog.String("reason", reason(content.ErrVenueProtected)),
+			slog.Int("event_count", venueWithDetails.EventCount),
+		)
+
 		return content.ErrVenueProtected
 	}
 
-	return venueStore.Delete(ctx, id)
+	err = venueStore.Delete(ctx, id)
+	if err != nil {
+		logger.Error(
+			"delete venue failed",
+			slog.String("step", "venue.delete"),
+			slog.Any("error", err),
+		)
+
+		return err
+	}
+
+	return nil
 }
