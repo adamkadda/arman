@@ -43,6 +43,20 @@ func (s *EventStore) GetWithTimestamps(
 	return nil, nil
 }
 
+func (s *EventStore) List(
+	ctx context.Context,
+	status *content.Status,
+	timeframe *content.Timeframe,
+) ([]content.Event, error) {
+	// TODO: Prepare query
+
+	// TODO: Execute query
+
+	// TODO: Return result
+
+	return nil, nil
+}
+
 func (s *EventStore) ListWithTimestamps(
 	ctx context.Context,
 	status *content.Status,
