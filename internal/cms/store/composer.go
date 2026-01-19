@@ -106,7 +106,6 @@ func (s *ComposerStore) GetWithDetails(
 func (s *ComposerStore) ListWithDetails(
 	ctx context.Context,
 ) ([]models.ComposerWithDetails, error) {
-	// TODO: Prepare query
 	query := `
 	SELECT
 		composer_id,
@@ -148,7 +147,7 @@ func (s *ComposerStore) Create(
 	INSERT INTO composers (full_name, short_name)
 	VALUES ($1, $2)
 	RETURNING
-		venue_id,
+		composer_id,
 		full_name,
 		short_name
 	`
@@ -182,7 +181,7 @@ func (s *ComposerStore) Update(
 		short_name = $2
 	WHERE composer_id = $3
 	RETURNING
-		venue_id,
+		composer_id,
 		full_name,
 		short_name
 	`
