@@ -21,7 +21,7 @@ func (h *VenueHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /venues/{id}", h.get)
 	mux.HandleFunc("GET /venues", h.list)
 	mux.HandleFunc("POST /venues", h.create)
-	mux.HandleFunc("PUT /venues/{id}", h.update)
+	mux.HandleFunc("PUT /venues", h.update)
 	mux.HandleFunc("DELETE /venues/{id}", h.delete)
 }
 
@@ -167,7 +167,7 @@ func (h *VenueHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	response := NewVenueResponse(venue)
 	respondJSON(r.Context(), w,
-		http.StatusOK,
+		http.StatusCreated,
 		response,
 	)
 }
