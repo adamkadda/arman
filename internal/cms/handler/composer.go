@@ -17,6 +17,12 @@ type ComposerHandler struct {
 	composerService *service.ComposerService
 }
 
+func NewComposerHandler(composerService *service.ComposerService) *ComposerHandler {
+	return &ComposerHandler{
+		composerService: composerService,
+	}
+}
+
 func (h *ComposerHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /composers/{id}", h.get)
 	mux.HandleFunc("GET /composers", h.list)

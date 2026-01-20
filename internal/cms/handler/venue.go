@@ -17,6 +17,12 @@ type VenueHandler struct {
 	venueService *service.VenueService
 }
 
+func NewVenueHandler(venueService *service.VenueService) *VenueHandler {
+	return &VenueHandler{
+		venueService: venueService,
+	}
+}
+
 func (h *VenueHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /venues/{id}", h.get)
 	mux.HandleFunc("GET /venues", h.list)
