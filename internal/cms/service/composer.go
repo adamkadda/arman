@@ -79,6 +79,48 @@ func (s *ComposerService) List(
 	return composerList, nil
 }
 
+// Create attempts to create a Composer.
+//
+// Create first validates the passed Composer. The passed Composer should
+// describe the desired state. Upon successful creation, Create returns the
+// newly created Composer. Otherwise it returns an error.
+func (s *ComposerService) Create(
+	ctx context.Context,
+	c content.Composer,
+) (*content.Composer, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "composer.create"),
+	)
+
+	logger.Info(
+		"create composer",
+	)
+
+	if err := c.Validate(); err != nil {
+		logger.Warn(
+			"validate composer rejected",
+			slog.String("reason", reason(err)),
+		)
+
+		return nil, err
+	}
+
+	composerStore := store.NewComposerStore(s.pool)
+
+	composer, err := composerStore.Create(ctx, c)
+	if err != nil {
+		logger.Error(
+			"create composer failed",
+			slog.String("step", "composer.create"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return composer, nil
+}
+
 // Update attempts to update a Composer.
 //
 // Update first validates the passed Composer, then it attempts to edit

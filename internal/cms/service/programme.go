@@ -98,6 +98,48 @@ func (s *ProgrammeService) List(
 	return programmeList, nil
 }
 
+// Create attempts to create a Programme.
+//
+// Create first validates the passed Programme. The passed Composer should
+// describe the desired state. Upon successful creation, Create returns the
+// newly created Programme. Otherwise it returns an error.
+func (s *ProgrammeService) Create(
+	ctx context.Context,
+	p content.Programme,
+) (*content.Programme, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "programme.create"),
+	)
+
+	logger.Info(
+		"create programme",
+	)
+
+	programmeStore := store.NewProgrammeStore(s.pool)
+
+	if err := p.Validate(); err != nil {
+		logger.Warn(
+			"validate programme rejected",
+			slog.String("reason", reason(err)),
+		)
+
+		return nil, err
+	}
+
+	programme, err := programmeStore.Create(ctx, p)
+	if err != nil {
+		logger.Error(
+			"create programme failed",
+			slog.String("step", "programme.create"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return programme, nil
+}
+
 // Update attempts to update a Programme's metadata.
 //
 // Update first validates the Programme passed in, then it attempts to edit

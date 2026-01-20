@@ -77,6 +77,48 @@ func (s *PieceService) List(
 	return pieceList, nil
 }
 
+// Create attempts to create a Piece.
+//
+// Create first validates the passed Piece. The passed Composer should
+// describe the desired state. Upon successful creation, Create returns the
+// newly created Piece. Otherwise it returns an error.
+func (s *PieceService) Create(
+	ctx context.Context,
+	p content.Piece,
+) (*content.Piece, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "piece.create"),
+	)
+
+	logger.Info(
+		"create piece",
+	)
+
+	pieceStore := store.NewPieceStore(s.pool)
+
+	if err := p.Validate(); err != nil {
+		logger.Warn(
+			"validate piece rejected",
+			slog.String("reason", reason(err)),
+		)
+
+		return nil, err
+	}
+
+	piece, err := pieceStore.Create(ctx, p)
+	if err != nil {
+		logger.Error(
+			"create piece failed",
+			slog.String("step", "piece.create"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return piece, nil
+}
+
 // Update attempts to update a Piece.
 //
 // Update first validates the Piece passed in, then it attempts to edit

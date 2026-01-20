@@ -160,6 +160,48 @@ func (s *EventService) ListWithTimestamp(
 	return eventList, nil
 }
 
+// Create attempts to create an Event.
+//
+// Create first validates the passed Event. The passed Composer should
+// describe the desired state. Upon successful creation, Create returns the
+// newly created Event. Otherwise it returns an error.
+func (s *EventService) Create(
+	ctx context.Context,
+	e content.Event,
+) (*content.Event, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "event.create"),
+	)
+
+	logger.Info(
+		"create event",
+	)
+
+	eventStore := store.NewEventStore(s.pool)
+
+	if err := e.Validate(); err != nil {
+		logger.Warn(
+			"validate event rejected",
+			slog.String("reason", reason(err)),
+		)
+
+		return nil, err
+	}
+
+	event, err := eventStore.Create(ctx, e)
+	if err != nil {
+		logger.Error(
+			"create event failed",
+			slog.String("step", "event.create"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return event, nil
+}
+
 // Update attempts to update an Event's metadata, and returns an
 // EventWithProgramme upon success.
 //

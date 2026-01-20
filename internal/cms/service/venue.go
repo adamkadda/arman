@@ -79,6 +79,48 @@ func (s *VenueService) List(
 	return venueList, nil
 }
 
+// Create attempts to create a Venue.
+//
+// Create first validates the passed Venue. The passed Composer should
+// describe the desired state. Upon successful creation, Create returns the
+// newly created Venue. Otherwise it returns an error.
+func (s *VenueService) Create(
+	ctx context.Context,
+	v content.Venue,
+) (*content.Venue, error) {
+	logger := logging.FromContext(ctx).With(
+		slog.String("operation", "venue.create"),
+	)
+
+	logger.Info(
+		"update venue",
+	)
+
+	venueStore := store.NewVenueStore(s.pool)
+
+	if err := v.Validate(); err != nil {
+		logger.Warn(
+			"validate venue rejected",
+			slog.String("reason", reason(err)),
+		)
+
+		return nil, err
+	}
+
+	venue, err := venueStore.Create(ctx, v)
+	if err != nil {
+		logger.Error(
+			"create venue failed",
+			slog.String("step", "venue.create"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return venue, err
+}
+
 // Update attempts to update a Venue.
 //
 // Update first validates the Venue passed in, then it attempts to edit
