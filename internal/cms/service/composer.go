@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/adamkadda/arman/internal/cms/models"
@@ -102,7 +103,7 @@ func (s *ComposerService) Create(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	composerStore := store.NewComposerStore(s.pool)
@@ -146,7 +147,7 @@ func (s *ComposerService) Update(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	composerStore := store.NewComposerStore(s.pool)
