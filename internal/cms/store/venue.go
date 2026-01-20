@@ -138,9 +138,9 @@ func (s *VenueStore) ListWithDetails(
 		return nil, err
 	}
 
-	venues := make([]models.VenueWithDetails, 0, len(rows))
-	for _, row := range rows {
-		venues = append(venues, row.toVenueWithDetails())
+	venues := make([]models.VenueWithDetails, len(rows))
+	for i, row := range rows {
+		venues[i] = row.toVenueWithDetails()
 	}
 
 	return venues, nil
@@ -151,7 +151,11 @@ func (s *VenueStore) Create(
 	v content.Venue,
 ) (*content.Venue, error) {
 	query := `
-	INSERT INTO venues (venue_name, full_address, short_address)
+	INSERT INTO venues (
+		venue_name,
+		full_address,
+		short_address
+	)
 	VALUES ($1, $2, $3)
 	RETURNING
 		venue_id,

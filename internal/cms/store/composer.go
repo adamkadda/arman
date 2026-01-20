@@ -131,9 +131,9 @@ func (s *ComposerStore) ListWithDetails(
 		return nil, err
 	}
 
-	composers := make([]models.ComposerWithDetails, 0, len(rows))
-	for _, row := range rows {
-		composers = append(composers, row.toComposerWithDetails())
+	composers := make([]models.ComposerWithDetails, len(rows))
+	for i, row := range rows {
+		composers[i] = row.toComposerWithDetails()
 	}
 
 	return composers, nil
@@ -144,7 +144,10 @@ func (s *ComposerStore) Create(
 	c content.Composer,
 ) (*content.Composer, error) {
 	query := `
-	INSERT INTO composers (full_name, short_name)
+	INSERT INTO composers (
+		full_name,
+		short_name
+	)
 	VALUES ($1, $2)
 	RETURNING
 		composer_id,

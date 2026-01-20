@@ -20,7 +20,7 @@ func NewPieceStore(db Executor) *PieceStore {
 
 type pieceRow struct {
 	pieceID         int    `db:"piece_id"`
-	piece_title     string `db:"piece_title"`
+	pieceTitle      string `db:"piece_title"`
 	composerID      int    `db:"composer_id"`
 	programme_count int    `db:"programme_count"`
 }
@@ -28,7 +28,7 @@ type pieceRow struct {
 func (r *pieceRow) toPiece() content.Piece {
 	return content.Piece{
 		ID:         r.pieceID,
-		Title:      r.piece_title,
+		Title:      r.pieceTitle,
 		ComposerID: r.composerID,
 	}
 }
@@ -77,7 +77,7 @@ func (s *PieceStore) GetWithDetails(
 		piece_id,
 		piece_title,
 		composer_id
-	COALESCE() AS programme_count
+	COALESCE(pp.programme_count, 0) AS programme_count
 	FROM pieces p
 	LEFT JOIN (
 		SELECT piece_id, COUNT(*) AS programme_count
@@ -131,9 +131,9 @@ func (s *PieceStore) ListWithDetails(
 		return nil, err
 	}
 
-	pieces := make([]models.PieceWithDetails, 0, len(rows))
-	for _, row := range rows {
-		pieces = append(pieces, row.toPieceWithDetails())
+	pieces := make([]models.PieceWithDetails, len(rows))
+	for i, row := range rows {
+		pieces[i] = row.toPieceWithDetails()
 	}
 
 	return pieces, nil
@@ -144,7 +144,10 @@ func (s *PieceStore) Create(
 	p content.Piece,
 ) (*content.Piece, error) {
 	query := `
-	INSERT INTO pieces (piece_title, composer_id)
+	INSERT INTO pieces (
+		piece_title,
+		composer_id
+	)
 	VALUES ($1, $2)
 	RETURNING
 		piece_id,
