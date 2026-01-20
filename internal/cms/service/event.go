@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/adamkadda/arman/internal/cms/models"
@@ -185,7 +186,7 @@ func (s *EventService) Create(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	event, err := eventStore.Create(ctx, e)
@@ -259,7 +260,7 @@ func (s *EventService) Update(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	event, err = eventStore.Update(ctx, *event)
@@ -448,7 +449,12 @@ func (s *EventService) Publish(
 	}
 
 	if err = event.Validate(); err != nil {
-		return err
+		logger.Warn(
+			"validate event rejected",
+			slog.String("reason", reason(err)),
+		)
+
+		return fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	programmeStore := store.NewProgrammeStore(s.pool)
@@ -479,7 +485,7 @@ func (s *EventService) Publish(
 			slog.String("reason", reason(err)),
 		)
 
-		return err
+		return fmt.Errorf("%w: %s", content.ErrEventNotPublishable, err)
 	}
 
 	err = eventStore.Publish(ctx, id)

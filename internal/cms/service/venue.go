@@ -149,7 +149,7 @@ func (s *VenueService) Update(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	venue, err := venueStore.Update(ctx, v)

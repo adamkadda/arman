@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/adamkadda/arman/internal/cms/models"
@@ -72,7 +73,6 @@ func (s *ProgrammeService) Get(
 // List returns an array of ProgrammeWithDetails, sorted by id.
 func (s *ProgrammeService) List(
 	ctx context.Context,
-	id int,
 ) ([]models.ProgrammeWithDetails, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "programme.list"),
@@ -123,7 +123,7 @@ func (s *ProgrammeService) Create(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	programme, err := programmeStore.Create(ctx, p)
@@ -182,7 +182,7 @@ func (s *ProgrammeService) Update(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	programmeStore := store.NewProgrammeStore(s.pool)
