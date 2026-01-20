@@ -17,6 +17,12 @@ func (programme *Programme) Validate() error {
 	return nil
 }
 
+// ProgrammePiece is the content model for a programme's pieces. It is defined as
+// such because for all business purposes, a programme piece is very closely
+// associated with the actual piece and its composer.
+//
+// While the database implementation might just be collection of references and
+// a sequence, services will always need all three fields of a ProgrammePiece.
 type ProgrammePiece struct {
 	Piece    Piece
 	Composer Composer
