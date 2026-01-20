@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/adamkadda/arman/internal/cms/models"
@@ -104,7 +105,7 @@ func (s *VenueService) Create(
 			slog.String("reason", reason(err)),
 		)
 
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
 	venue, err := venueStore.Create(ctx, v)

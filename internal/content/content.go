@@ -11,6 +11,7 @@ package content
 import "errors"
 
 var (
+	ErrInvalidResource    = errors.New("invalid resource")
 	ErrResourceNotFound   = errors.New("resource not found")
 	ErrInvariantViolation = errors.New("unexpected number of rows affected")
 )
