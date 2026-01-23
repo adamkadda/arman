@@ -1,61 +1,83 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
-	"github.com/adamkadda/arman/pkg/logging"
 )
 
+// ComposerHandler exposes HTTP endpoints for managing composers.
+// It is a thin HTTP-to-service adapter and contains no business logic.
 type ComposerHandler struct {
 	composerService *service.ComposerService
 }
 
-func NewComposerHandler(composerService *service.ComposerService) *ComposerHandler {
+func NewComposerHandler(
+	composerService *service.ComposerService,
+) *ComposerHandler {
 	return &ComposerHandler{
 		composerService: composerService,
 	}
 }
 
+// Register registers all composer-related HTTP routes on the provided ServeMux.
+// Routes are registered at the root and assume JSON request and response bodies.
 func (h *ComposerHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /composers/{id}", h.get)
 	mux.HandleFunc("GET /composers", h.list)
 	mux.HandleFunc("POST /composers", h.create)
-	mux.HandleFunc("PUT /composers", h.update)
+	mux.HandleFunc("PUT /composers/{id}", h.update)
 	mux.HandleFunc("DELETE /composers/{id}", h.delete)
 }
 
-type ComposerResponse struct {
+type composerRequest struct {
+	FullName  string `json:"full_name"`
+	ShortName string `json:"short_name"`
+}
+
+func (r *composerRequest) toDomain() content.Composer {
+	return content.Composer{
+		FullName:  r.FullName,
+		ShortName: r.ShortName,
+	}
+}
+
+func (r *composerRequest) toDomainWithID(id int) content.Composer {
+	return content.Composer{
+		ID:        id,
+		FullName:  r.FullName,
+		ShortName: r.ShortName,
+	}
+}
+
+type composerResponse struct {
 	ID        int    `json:"composer_id"`
 	FullName  string `json:"full_name"`
 	ShortName string `json:"short_name"`
 }
 
-func NewComposerResponse(c *content.Composer) ComposerResponse {
-	return ComposerResponse{
+func newComposerResponse(c *content.Composer) composerResponse {
+	return composerResponse{
 		ID:        c.ID,
 		FullName:  c.FullName,
 		ShortName: c.ShortName,
 	}
 }
 
-type ComposerWithDetailsResponse struct {
+type composerWithDetailsResponse struct {
 	ID         int    `json:"composer_id"`
 	FullName   string `json:"full_name"`
 	ShortName  string `json:"short_name"`
 	PieceCount int    `json:"piece_count"`
 }
 
-func NewComposerWithDetailsResponse(
+func newComposerWithDetailsResponse(
 	c *models.ComposerWithDetails,
-) ComposerWithDetailsResponse {
-	return ComposerWithDetailsResponse{
+) composerWithDetailsResponse {
+	return composerWithDetailsResponse{
 		ID:         c.Composer.ID,
 		FullName:   c.Composer.FullName,
 		ShortName:  c.Composer.ShortName,
@@ -64,21 +86,8 @@ func NewComposerWithDetailsResponse(
 }
 
 func (h *ComposerHandler) get(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"invalid id in path",
-			slog.String("id", idStr),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid composer ID",
-			},
-		)
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
@@ -87,26 +96,22 @@ func (h *ComposerHandler) get(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, content.ErrResourceNotFound) {
 			respondJSON(r.Context(), w,
 				http.StatusNotFound,
-				map[string]string{
-					"error": "composer not found",
-				},
+				pair("error", "composer not found"),
 			)
 			return
 		}
 
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := NewComposerResponse(composer)
+	resp := newComposerResponse(composer)
 	respondJSON(r.Context(), w,
 		http.StatusOK,
-		response,
+		resp,
 	)
 }
 
@@ -115,152 +120,114 @@ func (h *ComposerHandler) list(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := make([]ComposerWithDetailsResponse, len(composers))
-	for i, v := range composers {
-		response[i] = NewComposerWithDetailsResponse(&v)
+	resp := make([]composerWithDetailsResponse, len(composers))
+	for i := range composers {
+		resp[i] = newComposerWithDetailsResponse(&composers[i])
 	}
 
 	respondJSON(r.Context(), w,
 		http.StatusOK,
-		response,
+		resp,
 	)
 }
 
 func (h *ComposerHandler) create(w http.ResponseWriter, r *http.Request) {
-	var v content.Composer
-	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"decode body failed",
-			slog.Any("error", err),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid composer in request",
-			},
-		)
+	req, ok := parseBody[composerRequest](w, r)
+	if !ok {
 		return
 	}
 
-	composer, err := h.composerService.Create(r.Context(), v)
+	composer, err := h.composerService.Create(r.Context(), req.toDomain())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
 				http.StatusBadRequest,
-				map[string]string{
-					"error": err.Error(),
-				},
+				pair("error", err.Error()),
 			)
 			return
 		}
 
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := NewComposerResponse(composer)
+	resp := newComposerResponse(composer)
 	respondJSON(r.Context(), w,
 		http.StatusCreated,
-		response,
+		resp,
 	)
 }
 
 func (h *ComposerHandler) update(w http.ResponseWriter, r *http.Request) {
-	var v content.Composer
-	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"decode body failed",
-			slog.Any("error", err),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid composer in request",
-			},
-		)
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
-	composer, err := h.composerService.Update(r.Context(), v)
+	req, ok := parseBody[composerRequest](w, r)
+	if !ok {
+		return
+	}
+
+	composer, err := h.composerService.Update(r.Context(), req.toDomainWithID(id))
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
 				http.StatusBadRequest,
-				map[string]string{
-					"error": err.Error(),
-				},
+				pair("error", err.Error()),
 			)
 			return
 		}
 
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := NewComposerResponse(composer)
+	resp := newComposerResponse(composer)
 	respondJSON(r.Context(), w,
 		http.StatusOK,
-		response,
+		resp,
 	)
 }
 
 func (h *ComposerHandler) delete(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"invalid id in path",
-			slog.String("id", idStr),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid composer ID",
-			},
-		)
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
-	err = h.composerService.Delete(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, content.ErrResourceNotFound) {
+	if err := h.composerService.Delete(r.Context(), id); err != nil {
+		switch {
+		case errors.Is(err, content.ErrResourceNotFound):
 			respondJSON(r.Context(), w,
 				http.StatusNotFound,
-				map[string]string{
-					"error": "composer not found",
-				},
+				pair("error", "composer not found"),
+			)
+			return
+		case errors.Is(err, content.ErrComposerProtected):
+			respondJSON(r.Context(), w,
+				http.StatusForbidden,
+				pair("error", "composer in use"),
+			)
+			return
+		default:
+			respondJSON(r.Context(), w,
+				http.StatusInternalServerError,
+				pair("error", "internal server error"),
 			)
 			return
 		}
-
-		respondJSON(r.Context(), w,
-			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
-		)
-		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

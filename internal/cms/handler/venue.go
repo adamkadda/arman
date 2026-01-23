@@ -1,28 +1,30 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/adamkadda/arman/internal/cms/models"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
-	"github.com/adamkadda/arman/pkg/logging"
 )
 
+// VenueHandler exposes HTTP endpoints for managing venues.
+// It is a thin HTTP-to-service adapter and contains no business logic.
 type VenueHandler struct {
 	venueService *service.VenueService
 }
 
-func NewVenueHandler(venueService *service.VenueService) *VenueHandler {
+func NewVenueHandler(
+	venueService *service.VenueService,
+) *VenueHandler {
 	return &VenueHandler{
 		venueService: venueService,
 	}
 }
 
+// Register registers all venue-related HTTP routes on the provided ServeMux.
+// Routes are registered at the root and assume JSON request and response bodies.
 func (h *VenueHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /venues/{id}", h.get)
 	mux.HandleFunc("GET /venues", h.list)
@@ -61,7 +63,7 @@ type venueResponse struct {
 	ShortAddress string `json:"short_address"`
 }
 
-func NewVenueResponse(v *content.Venue) venueResponse {
+func newVenueResponse(v *content.Venue) venueResponse {
 	return venueResponse{
 		ID:           v.ID,
 		Name:         v.Name,
@@ -89,21 +91,8 @@ func newVenueWithDetailsResponse(
 }
 
 func (h *VenueHandler) get(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"invalid id in path",
-			slog.String("id", idStr),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid venue ID",
-			},
-		)
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
@@ -112,26 +101,22 @@ func (h *VenueHandler) get(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, content.ErrResourceNotFound) {
 			respondJSON(r.Context(), w,
 				http.StatusNotFound,
-				map[string]string{
-					"error": "venue not found",
-				},
+				pair("error", "venue not found"),
 			)
 			return
 		}
 
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := NewVenueResponse(venue)
+	resp := newVenueResponse(venue)
 	respondJSON(r.Context(), w,
 		http.StatusOK,
-		response,
+		resp,
 	)
 }
 
@@ -140,182 +125,114 @@ func (h *VenueHandler) list(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := make([]venueWithDetailsResponse, len(venues))
-	for i, v := range venues {
-		response[i] = newVenueWithDetailsResponse(&v)
+	resp := make([]venueWithDetailsResponse, len(venues))
+	for i := range venues {
+		resp[i] = newVenueWithDetailsResponse(&venues[i])
 	}
 
 	respondJSON(r.Context(), w,
 		http.StatusOK,
-		response,
+		resp,
 	)
 }
 
 func (h *VenueHandler) create(w http.ResponseWriter, r *http.Request) {
-	var req venueRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"decode body failed",
-			slog.Any("error", err),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid venue in request",
-			},
-		)
+	req, ok := parseBody[venueRequest](w, r)
+	if !ok {
 		return
 	}
-	defer r.Body.Close()
 
 	venue, err := h.venueService.Create(r.Context(), req.toDomain())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
 				http.StatusBadRequest,
-				map[string]string{
-					"error": err.Error(),
-				},
+				pair("error", err.Error()),
 			)
 			return
 		}
 
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := NewVenueResponse(venue)
+	resp := newVenueResponse(venue)
 	respondJSON(r.Context(), w,
 		http.StatusCreated,
-		response,
+		resp,
 	)
 }
 
 func (h *VenueHandler) update(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"invalid id in path",
-			slog.String("id", idStr),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid venue ID",
-			},
-		)
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
-	var req venueRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"decode body failed",
-			slog.Any("error", err),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid venue in request",
-			},
-		)
+	req, ok := parseBody[venueRequest](w, r)
+	if !ok {
 		return
 	}
-	defer r.Body.Close()
 
 	venue, err := h.venueService.Update(r.Context(), req.toDomainWithID(id))
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
 				http.StatusBadRequest,
-				map[string]string{
-					"error": err.Error(),
-				},
+				pair("error", err.Error()),
 			)
 			return
 		}
 
 		respondJSON(r.Context(), w,
 			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
+			pair("error", "internal server error"),
 		)
 		return
 	}
 
-	response := NewVenueResponse(venue)
+	resp := newVenueResponse(venue)
 	respondJSON(r.Context(), w,
 		http.StatusOK,
-		response,
+		resp,
 	)
 }
 
 func (h *VenueHandler) delete(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		logging.FromContext(r.Context()).Warn(
-			"invalid id in path",
-			slog.String("id", idStr),
-		)
-
-		respondJSON(r.Context(), w,
-			http.StatusBadRequest,
-			map[string]string{
-				"error": "invalid venue ID",
-			},
-		)
+	id, ok := parseID(w, r)
+	if !ok {
 		return
 	}
 
-	err = h.venueService.Delete(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, content.ErrResourceNotFound) {
+	if err := h.venueService.Delete(r.Context(), id); err != nil {
+		switch {
+		case errors.Is(err, content.ErrResourceNotFound):
 			respondJSON(r.Context(), w,
 				http.StatusNotFound,
-				map[string]string{
-					"error": "venue not found",
-				},
+				pair("error", "venue not found"),
 			)
 			return
-		}
-
-		if errors.Is(err, content.ErrVenueProtected) {
+		case errors.Is(err, content.ErrVenueProtected):
 			respondJSON(r.Context(), w,
 				http.StatusForbidden,
-				map[string]string{
-					"error": "venue referenced by published events",
-				},
+				pair("error", "venue in use"),
+			)
+			return
+		default:
+			respondJSON(r.Context(), w,
+				http.StatusInternalServerError,
+				pair("error", "internal server error"),
 			)
 			return
 		}
-
-		respondJSON(r.Context(), w,
-			http.StatusInternalServerError,
-			map[string]string{
-				"error": "internal server error",
-			},
-		)
-		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
