@@ -101,4 +101,5 @@ var (
 	ErrEventProgrammeEmpty  = errors.New("event programme is empty")
 	ErrEventImmutable       = errors.New("event is immutable")
 	ErrEventProtected       = errors.New("event protected; deletion forbidden")
+	ErrEventNotPublishable  = errors.New("event not publishable")
 )
