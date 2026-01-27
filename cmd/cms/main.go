@@ -8,7 +8,12 @@ import (
 	"runtime/debug"
 	"syscall"
 
+	"github.com/adamkadda/arman/internal/cms"
+	"github.com/adamkadda/arman/internal/cms/handler"
+	"github.com/adamkadda/arman/pkg/database"
 	"github.com/adamkadda/arman/pkg/logging"
+	"github.com/adamkadda/arman/pkg/server"
+	"github.com/caarlos0/env/v11"
 )
 
 func main() {
@@ -33,7 +38,7 @@ func main() {
 		}
 	}()
 
-	err := realMain(ctx)
+	err := start(ctx)
 	done()
 
 	if err != nil {
@@ -47,15 +52,26 @@ func main() {
 	logger.Info("successful shutdown")
 }
 
-func realMain(ctx context.Context) error {
-	// TODO: Load env
+func start(ctx context.Context) error {
+	var cfg cms.Config
+	if err := env.Parse(&cfg); err != nil {
+		return err
+	}
 
-	// TODO: Setup DB connection
+	// TODO: Initialize pkg
 
-	// TODO: Setup middleware stack
+	db, err := database.NewWithConfig(ctx, cfg.DB)
+	if err != nil {
+		return err
+	}
+	defer db.Close(ctx)
 
-	// TODO: Register routes
+	server, err := server.New(cfg.Port)
+	if err != nil {
+		return err
+	}
 
-	// TODO: Start listening
-	return nil
+	router := handler.RegisterRoutes(db.Pool)
+
+	return server.ServeHTTPHandler(ctx, router)
 }
