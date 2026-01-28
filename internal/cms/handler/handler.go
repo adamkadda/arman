@@ -63,6 +63,16 @@ func parseID(
 ) (int, bool) {
 	idStr := r.PathValue("id")
 
+	if idStr == "" {
+		logging.FromContext(r.Context()).Warn("missing id in path")
+
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", "missing id"),
+		)
+		return 0, false
+	}
+
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		logging.FromContext(r.Context()).Warn(
@@ -85,6 +95,18 @@ func parseBody[T any](
 	r *http.Request,
 ) (T, bool) {
 	var req T
+
+	if r.Body == nil {
+		logging.FromContext(r.Context()).Warn(
+			"request body missing",
+		)
+
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", "missing request body"),
+		)
+		return req, false
+	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logging.FromContext(r.Context()).Warn(
