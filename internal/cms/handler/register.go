@@ -42,7 +42,9 @@ func RegisterRoutes(
 	eventHandler := NewEventHandler(eventService)
 	eventHandler.Register(router)
 
-	// TODO: Create and register biography routes.
+	biographyService := service.NewBiographyService(pool)
+	biographyHandler := NewBiographyHandler(biographyService)
+	biographyHandler.Register(router)
 
 	// TODO: Create and register contact details routes.
 

@@ -122,6 +122,9 @@ var reasons = map[error]string{
 	content.ErrEventTitleEmpty: "event_title_empty",
 	content.ErrEventImmutable:  "event_immutable",
 	content.ErrEventProtected:  "event_protected",
+
+	// Biography
+	content.ErrInvalidBiographyVariant: "biography_variant_invalid",
 }
 
 // reason returns a standardized, machine-readable string for business-rule

@@ -46,6 +46,12 @@ CREATE TABLE events (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE biographies (
+    variant TEXT PRIMARY KEY,
+    content TEXT NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+
 -- Create a trigger for updating the updated_at column.
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
