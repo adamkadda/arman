@@ -9,16 +9,15 @@ import (
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type VenueService struct {
-	pool *pgxpool.Pool
+	db DB
 }
 
-func NewVenueService(pool *pgxpool.Pool) *VenueService {
+func NewVenueService(db DB) *VenueService {
 	return &VenueService{
-		pool: pool,
+		db: db,
 	}
 }
 
@@ -36,7 +35,7 @@ func (s *VenueService) Get(
 		"get venue",
 	)
 
-	venueStore := store.NewVenueStore(s.pool)
+	venueStore := store.NewVenueStore(s.db)
 
 	venue, err := venueStore.Get(ctx, id)
 	if err != nil {
@@ -64,7 +63,7 @@ func (s *VenueService) List(
 		"list venues",
 	)
 
-	venueStore := store.NewVenueStore(s.pool)
+	venueStore := store.NewVenueStore(s.db)
 
 	venueList, err := venueStore.ListWithDetails(ctx)
 	if err != nil {
@@ -97,7 +96,7 @@ func (s *VenueService) Create(
 		"update venue",
 	)
 
-	venueStore := store.NewVenueStore(s.pool)
+	venueStore := store.NewVenueStore(s.db)
 
 	if err := v.Validate(); err != nil {
 		logger.Warn(
@@ -141,7 +140,7 @@ func (s *VenueService) Update(
 		"update venue",
 	)
 
-	venueStore := store.NewVenueStore(s.pool)
+	venueStore := store.NewVenueStore(s.db)
 
 	if err := v.Validate(); err != nil {
 		logger.Warn(
@@ -183,7 +182,7 @@ func (s *VenueService) Delete(
 		"delete venue",
 	)
 
-	venueStore := store.NewVenueStore(s.pool)
+	venueStore := store.NewVenueStore(s.db)
 
 	venueWithDetails, err := venueStore.GetWithDetails(ctx, id)
 	if err != nil {

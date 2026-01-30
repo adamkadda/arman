@@ -9,16 +9,15 @@ import (
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ProgrammeService struct {
-	pool *pgxpool.Pool
+	db DB
 }
 
-func NewProgrammeService(pool *pgxpool.Pool) *ProgrammeService {
+func NewProgrammeService(db DB) *ProgrammeService {
 	return &ProgrammeService{
-		pool: pool,
+		db: db,
 	}
 }
 
@@ -36,7 +35,7 @@ func (s *ProgrammeService) Get(
 		"get programme",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	p, err := programmeStore.Get(ctx, id)
 	if err != nil {
@@ -49,7 +48,7 @@ func (s *ProgrammeService) Get(
 		return nil, err
 	}
 
-	programmePieceStore := store.NewProgrammePieceStore(s.pool)
+	programmePieceStore := store.NewProgrammePieceStore(s.db)
 
 	pp, err := programmePieceStore.ListByProgrammeID(ctx, id)
 	if err != nil {
@@ -82,7 +81,7 @@ func (s *ProgrammeService) List(
 		"list programmes",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	programmeList, err := programmeStore.ListWithDetails(ctx)
 	if err != nil {
@@ -115,7 +114,7 @@ func (s *ProgrammeService) Create(
 		"create programme",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	if err := p.Validate(); err != nil {
 		logger.Warn(
@@ -164,7 +163,7 @@ func (s *ProgrammeService) Update(
 		"update programme",
 	)
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		logger.Error(
 			"begin transaction failed",
@@ -185,7 +184,7 @@ func (s *ProgrammeService) Update(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, p.ID)
 	if err != nil {
@@ -257,7 +256,7 @@ func (s *ProgrammeService) UpdatePieces(
 		"update programme pieces",
 	)
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		logger.Error(
 			"begin transaction failed",
@@ -351,7 +350,7 @@ func (s *ProgrammeService) Delete(
 		"delete programme",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, id)
 	if err != nil {

@@ -6,9 +6,12 @@
 package service
 
 import (
+	"context"
 	"errors"
 
 	"github.com/adamkadda/arman/internal/content"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 /*
@@ -95,6 +98,14 @@ import (
 	□ Do not log routine success
 	□ Do not log in the store layer
 */
+
+type DB interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
 
 var reasons = map[error]string{
 	// Composer

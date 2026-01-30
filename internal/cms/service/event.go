@@ -9,16 +9,15 @@ import (
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type EventService struct {
-	pool *pgxpool.Pool
+	db DB
 }
 
-func NewEventService(pool *pgxpool.Pool) *EventService {
+func NewEventService(db DB) *EventService {
 	return &EventService{
-		pool: pool,
+		db: db,
 	}
 }
 
@@ -36,7 +35,7 @@ func (s *EventService) Get(
 		"get event",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	e, err := eventStore.Get(ctx, id)
 	if err != nil {
@@ -49,7 +48,7 @@ func (s *EventService) Get(
 		return nil, err
 	}
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	p, err := programmeStore.Get(ctx, *e.ProgrammeID)
 	if err != nil {
@@ -62,7 +61,7 @@ func (s *EventService) Get(
 		return nil, err
 	}
 
-	programmePieceStore := store.NewProgrammePieceStore(s.pool)
+	programmePieceStore := store.NewProgrammePieceStore(s.db)
 
 	pp, err := programmePieceStore.ListByProgrammeID(ctx, p.ID)
 	if err != nil {
@@ -108,7 +107,7 @@ func (s *EventService) List(
 		"list events",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	eventList, err := eventStore.List(ctx, status, timeframe)
 	if err != nil {
@@ -146,7 +145,7 @@ func (s *EventService) ListWithTimestamp(
 		"list events with timestamps",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	eventList, err := eventStore.ListWithTimestamps(ctx, status, timeframe)
 	if err != nil {
@@ -178,7 +177,7 @@ func (s *EventService) Create(
 		"create event",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	if err := e.Validate(); err != nil {
 		logger.Warn(
@@ -220,7 +219,7 @@ func (s *EventService) Update(
 		"update event",
 	)
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		logger.Error(
 			"begin transaction failed",
@@ -340,7 +339,7 @@ func (s *EventService) UpdateNotes(
 		"update event notes",
 	)
 
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		logger.Error(
 			"begin transaction failed",
@@ -405,7 +404,7 @@ func (s *EventService) Draft(
 		"draft event",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	if err := eventStore.Draft(ctx, id); err != nil {
 		logger.Error(
@@ -435,7 +434,7 @@ func (s *EventService) Publish(
 		"publish event",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	event, err := eventStore.Get(ctx, id)
 	if err != nil {
@@ -457,7 +456,7 @@ func (s *EventService) Publish(
 		return fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	programmeStore := store.NewProgrammeStore(s.pool)
+	programmeStore := store.NewProgrammeStore(s.db)
 
 	programme, err := programmeStore.GetWithDetails(ctx, *event.ProgrammeID)
 	if err != nil {
@@ -516,7 +515,7 @@ func (s *EventService) Archive(
 		"archive event",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	if err := eventStore.Archive(ctx, id); err != nil {
 		logger.Error(
@@ -547,7 +546,7 @@ func (s *EventService) Delete(
 		"delete event",
 	)
 
-	eventStore := store.NewEventStore(s.pool)
+	eventStore := store.NewEventStore(s.db)
 
 	event, err := eventStore.Get(ctx, id)
 	if err != nil {

@@ -9,16 +9,15 @@ import (
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ComposerService struct {
-	pool *pgxpool.Pool
+	db DB
 }
 
-func NewComposerService(pool *pgxpool.Pool) *ComposerService {
+func NewComposerService(db DB) *ComposerService {
 	return &ComposerService{
-		pool: pool,
+		db: db,
 	}
 }
 
@@ -36,7 +35,7 @@ func (s *ComposerService) Get(
 		"get composer",
 	)
 
-	composerStore := store.NewComposerStore(s.pool)
+	composerStore := store.NewComposerStore(s.db)
 
 	composer, err := composerStore.Get(ctx, id)
 	if err != nil {
@@ -64,7 +63,7 @@ func (s *ComposerService) List(
 		"list composers",
 	)
 
-	composerStore := store.NewComposerStore(s.pool)
+	composerStore := store.NewComposerStore(s.db)
 
 	composerList, err := composerStore.ListWithDetails(ctx)
 	if err != nil {
@@ -106,7 +105,7 @@ func (s *ComposerService) Create(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	composerStore := store.NewComposerStore(s.pool)
+	composerStore := store.NewComposerStore(s.db)
 
 	composer, err := composerStore.Create(ctx, c)
 	if err != nil {
@@ -150,7 +149,7 @@ func (s *ComposerService) Update(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	composerStore := store.NewComposerStore(s.pool)
+	composerStore := store.NewComposerStore(s.db)
 
 	composer, err := composerStore.Update(ctx, c)
 	if err != nil {
@@ -182,7 +181,7 @@ func (s *ComposerService) Delete(
 		"delete composer",
 	)
 
-	composerStore := store.NewComposerStore(s.pool)
+	composerStore := store.NewComposerStore(s.db)
 
 	composerWithDetails, err := composerStore.GetWithDetails(ctx, id)
 	if err != nil {

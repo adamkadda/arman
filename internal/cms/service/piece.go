@@ -9,16 +9,15 @@ import (
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PieceService struct {
-	pool *pgxpool.Pool
+	db DB
 }
 
-func NewPieceService(pool *pgxpool.Pool) *PieceService {
+func NewPieceService(db DB) *PieceService {
 	return &PieceService{
-		pool: pool,
+		db: db,
 	}
 }
 
@@ -36,7 +35,7 @@ func (s *PieceService) Get(
 		"get piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.pool)
+	pieceStore := store.NewPieceStore(s.db)
 
 	piece, err := pieceStore.Get(ctx, id)
 	if err != nil {
@@ -62,7 +61,7 @@ func (s *PieceService) List(
 		"list pieces",
 	)
 
-	pieceStore := store.NewPieceStore(s.pool)
+	pieceStore := store.NewPieceStore(s.db)
 
 	pieceList, err := pieceStore.ListWithDetails(ctx)
 	if err != nil {
@@ -95,7 +94,7 @@ func (s *PieceService) Create(
 		"create piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.pool)
+	pieceStore := store.NewPieceStore(s.db)
 
 	if err := p.Validate(); err != nil {
 		logger.Warn(
@@ -139,7 +138,7 @@ func (s *PieceService) Update(
 		"update piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.pool)
+	pieceStore := store.NewPieceStore(s.db)
 
 	if err := p.Validate(); err != nil {
 		logger.Warn(
@@ -181,7 +180,7 @@ func (s *PieceService) Delete(
 		"delete piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.pool)
+	pieceStore := store.NewPieceStore(s.db)
 
 	pieceWithDetails, err := pieceStore.GetWithDetails(ctx, id)
 	if err != nil {
