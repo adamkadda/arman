@@ -12,13 +12,26 @@ import (
 )
 
 type PieceService struct {
-	db DB
+	db            DB
+	newPieceStore func(db store.Executor) PieceStore
 }
 
 func NewPieceService(db DB) *PieceService {
 	return &PieceService{
 		db: db,
+		newPieceStore: func(db store.Executor) PieceStore {
+			return store.NewPieceStore(db)
+		},
 	}
+}
+
+type PieceStore interface {
+	Get(ctx context.Context, id int) (*content.Piece, error)
+	GetWithDetails(ctx context.Context, id int) (*models.PieceWithDetails, error)
+	ListWithDetails(ctx context.Context) ([]models.PieceWithDetails, error)
+	Create(ctx context.Context, p content.Piece) (*content.Piece, error)
+	Update(ctx context.Context, p content.Piece) (*content.Piece, error)
+	Delete(ctx context.Context, id int) error
 }
 
 // Get returns a Piece by id.
@@ -35,7 +48,7 @@ func (s *PieceService) Get(
 		"get piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.db)
+	pieceStore := s.newPieceStore(s.db)
 
 	piece, err := pieceStore.Get(ctx, id)
 	if err != nil {
@@ -44,6 +57,8 @@ func (s *PieceService) Get(
 			slog.String("step", "piece.get"),
 			slog.Any("error", err),
 		)
+
+		return nil, err
 	}
 
 	return piece, nil
@@ -61,7 +76,7 @@ func (s *PieceService) List(
 		"list pieces",
 	)
 
-	pieceStore := store.NewPieceStore(s.db)
+	pieceStore := s.newPieceStore(s.db)
 
 	pieceList, err := pieceStore.ListWithDetails(ctx)
 	if err != nil {
@@ -94,7 +109,7 @@ func (s *PieceService) Create(
 		"create piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.db)
+	pieceStore := s.newPieceStore(s.db)
 
 	if err := p.Validate(); err != nil {
 		logger.Warn(
@@ -138,7 +153,7 @@ func (s *PieceService) Update(
 		"update piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.db)
+	pieceStore := s.newPieceStore(s.db)
 
 	if err := p.Validate(); err != nil {
 		logger.Warn(
@@ -180,7 +195,7 @@ func (s *PieceService) Delete(
 		"delete piece",
 	)
 
-	pieceStore := store.NewPieceStore(s.db)
+	pieceStore := s.newPieceStore(s.db)
 
 	pieceWithDetails, err := pieceStore.GetWithDetails(ctx, id)
 	if err != nil {
@@ -210,6 +225,8 @@ func (s *PieceService) Delete(
 			slog.String("step", "piece.delete"),
 			slog.Any("error", err),
 		)
+
+		return err
 	}
 
 	return nil

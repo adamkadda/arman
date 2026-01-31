@@ -17,6 +17,8 @@ type mockComposerStore struct {
 	detailedComposers []models.ComposerWithDetails
 	detailedComposer  *models.ComposerWithDetails
 	err               error
+	getErr            error
+	deleteErr         error
 }
 
 func (s mockComposerStore) Get(ctx context.Context, id int) (*content.Composer, error) {
@@ -24,7 +26,7 @@ func (s mockComposerStore) Get(ctx context.Context, id int) (*content.Composer, 
 }
 
 func (s mockComposerStore) GetWithDetails(ctx context.Context, id int) (*models.ComposerWithDetails, error) {
-	return s.detailedComposer, s.err
+	return s.detailedComposer, s.getErr
 }
 
 func (s mockComposerStore) ListWithDetails(ctx context.Context) ([]models.ComposerWithDetails, error) {
@@ -40,7 +42,7 @@ func (s mockComposerStore) Update(ctx context.Context, c content.Composer) (*con
 }
 
 func (s mockComposerStore) Delete(ctx context.Context, id int) error {
-	return s.err
+	return s.deleteErr
 }
 
 func TestComposerService_Get(t *testing.T) {
@@ -220,21 +222,49 @@ func TestComposerService_Update(t *testing.T) {
 
 func TestComposerService_Delete(t *testing.T) {
 	tests := []struct {
-		name     string
-		composer *models.ComposerWithDetails
-		err      error
-		wantErr  bool
+		name          string
+		composer      *models.ComposerWithDetails
+		getErr        error
+		deleteErr     error
+		expectedError error
 	}{
-		{"composer.delete success", &models.ComposerWithDetails{
-			Composer:   content.Composer{FullName: "foo"},
-			PieceCount: 0,
-		}, nil, false},
-		{"composer.get_with_details error", &models.ComposerWithDetails{}, errors.New("oops"), true},
-		{"composer.delete blocked", &models.ComposerWithDetails{
-			Composer:   content.Composer{FullName: "foo"},
-			PieceCount: 1,
-		}, content.ErrComposerProtected, true},
-		{"composer.delete error", &models.ComposerWithDetails{}, errors.New("oops"), true},
+		{
+			name: "composer.delete success",
+			composer: &models.ComposerWithDetails{
+				Composer:   content.Composer{FullName: "foo"},
+				PieceCount: 0,
+			},
+			getErr:        nil,
+			deleteErr:     nil,
+			expectedError: nil,
+		},
+		{
+			name:          "composer.get_with_details error",
+			composer:      nil,
+			getErr:        ErrGet,
+			deleteErr:     nil,
+			expectedError: ErrGet,
+		},
+		{
+			name: "composer.delete blocked",
+			composer: &models.ComposerWithDetails{
+				Composer:   content.Composer{FullName: "foo"},
+				PieceCount: 1,
+			},
+			getErr:        nil,
+			deleteErr:     nil,
+			expectedError: content.ErrComposerProtected,
+		},
+		{
+			name: "composer.delete error",
+			composer: &models.ComposerWithDetails{
+				Composer:   content.Composer{FullName: "foo"},
+				PieceCount: 0,
+			},
+			getErr:        nil,
+			deleteErr:     ErrDelete,
+			expectedError: ErrDelete,
+		},
 	}
 
 	for _, tt := range tests {
@@ -245,15 +275,16 @@ func TestComposerService_Delete(t *testing.T) {
 				newComposerStore: func(db store.Executor) ComposerStore {
 					return mockComposerStore{
 						detailedComposer: tt.composer,
-						err:              tt.err,
+						getErr:           tt.getErr,
+						deleteErr:        tt.deleteErr,
 					}
 				},
 			}
 
 			err := svc.Delete(testContext(), 1)
 
-			if tt.wantErr {
-				require.ErrorIs(t, err, tt.err)
+			if tt.expectedError != nil {
+				require.ErrorIs(t, err, tt.expectedError)
 			} else {
 				require.NoError(t, err)
 			}

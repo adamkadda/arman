@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 
@@ -33,3 +34,8 @@ func testContext() context.Context {
 	logger := slog.New(handler)
 	return logging.WithLogger(context.Background(), logger)
 }
+
+var (
+	ErrGet    = errors.New("get error")
+	ErrDelete = errors.New("delete error")
+)

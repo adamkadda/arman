@@ -17,6 +17,8 @@ type mockVenueStore struct {
 	detailedVenue  *models.VenueWithDetails
 	detailedVenues []models.VenueWithDetails
 	err            error
+	getErr         error
+	deleteErr      error
 }
 
 func (s mockVenueStore) Get(ctx context.Context, id int) (*content.Venue, error) {
@@ -24,7 +26,7 @@ func (s mockVenueStore) Get(ctx context.Context, id int) (*content.Venue, error)
 }
 
 func (s mockVenueStore) GetWithDetails(ctx context.Context, id int) (*models.VenueWithDetails, error) {
-	return s.detailedVenue, s.err
+	return s.detailedVenue, s.getErr
 }
 
 func (s mockVenueStore) ListWithDetails(ctx context.Context) ([]models.VenueWithDetails, error) {
@@ -40,11 +42,7 @@ func (s mockVenueStore) Update(ctx context.Context, v content.Venue) (*content.V
 }
 
 func (s mockVenueStore) Delete(ctx context.Context, id int) error {
-	return s.err
-}
-
-func (s mockVenueStore) List(ctx context.Context) ([]content.Venue, error) {
-	return s.venues, s.err
+	return s.deleteErr
 }
 
 func TestVenueService_Get(t *testing.T) {
@@ -228,21 +226,49 @@ func TestVenueService_Update(t *testing.T) {
 
 func TestVenueService_Delete(t *testing.T) {
 	tests := []struct {
-		name    string
-		venue   *models.VenueWithDetails
-		err     error
-		wantErr bool
+		name          string
+		venue         *models.VenueWithDetails
+		getErr        error
+		deleteErr     error
+		expectedError error
 	}{
-		{"venue.delete success", &models.VenueWithDetails{
-			Venue:      content.Venue{Name: "foo"},
-			EventCount: 0,
-		}, nil, false},
-		{"venue.get_with_details error", nil, errors.New("oops"), true},
-		{"venue.delete blocked", &models.VenueWithDetails{
-			Venue:      content.Venue{Name: "foo"},
-			EventCount: 1,
-		}, content.ErrVenueProtected, true},
-		{"venue.delete error", nil, errors.New("oops"), true},
+		{
+			name: "venue.delete success",
+			venue: &models.VenueWithDetails{
+				Venue:      content.Venue{Name: "foo"},
+				EventCount: 0,
+			},
+			getErr:        nil,
+			deleteErr:     nil,
+			expectedError: nil,
+		},
+		{
+			name:          "venue.get_with_details error",
+			venue:         nil,
+			getErr:        ErrGet,
+			deleteErr:     nil,
+			expectedError: ErrGet,
+		},
+		{
+			name: "venue.delete blocked",
+			venue: &models.VenueWithDetails{
+				Venue:      content.Venue{Name: "foo"},
+				EventCount: 1,
+			},
+			getErr:        nil,
+			deleteErr:     nil,
+			expectedError: content.ErrVenueProtected,
+		},
+		{
+			name: "venue.delete error",
+			venue: &models.VenueWithDetails{
+				Venue:      content.Venue{Name: "foo"},
+				EventCount: 0,
+			},
+			getErr:        nil,
+			deleteErr:     ErrDelete,
+			expectedError: ErrDelete,
+		},
 	}
 
 	for _, tt := range tests {
@@ -253,15 +279,16 @@ func TestVenueService_Delete(t *testing.T) {
 				newVenueStore: func(db store.Executor) VenueStore {
 					return mockVenueStore{
 						detailedVenue: tt.venue,
-						err:           tt.err,
+						getErr:        tt.getErr,
+						deleteErr:     tt.deleteErr,
 					}
 				},
 			}
 
 			err := svc.Delete(testContext(), 1)
 
-			if tt.wantErr {
-				require.ErrorIs(t, err, tt.err)
+			if tt.expectedError != nil {
+				require.ErrorIs(t, err, tt.expectedError)
 			} else {
 				require.NoError(t, err)
 			}
