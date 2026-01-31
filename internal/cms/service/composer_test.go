@@ -70,7 +70,7 @@ func TestComposerService_Get(t *testing.T) {
 			composer, err := svc.Get(testContext(), 1)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, composer)
 			} else {
 				require.NoError(t, err)
@@ -120,7 +120,7 @@ func TestComposerService_List(t *testing.T) {
 			composers, err := svc.List(testContext())
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, composers)
 			} else {
 				require.NoError(t, err)
@@ -142,7 +142,10 @@ func TestComposerService_Create(t *testing.T) {
 			ShortName: "Bar",
 		}, nil, false},
 		{"composer.create rejected", content.Composer{}, content.ErrInvalidResource, true},
-		{"composer.create error", content.Composer{}, errors.New("oops"), true},
+		{"composer.create error", content.Composer{
+			FullName:  "Foo",
+			ShortName: "Bar",
+		}, errors.New("oops"), true},
 	}
 
 	for _, tt := range tests {
@@ -161,7 +164,7 @@ func TestComposerService_Create(t *testing.T) {
 			composer, err := svc.Create(testContext(), tt.composer)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, composer)
 			} else {
 				require.NoError(t, err)
@@ -183,7 +186,10 @@ func TestComposerService_Update(t *testing.T) {
 			ShortName: "Bar",
 		}, nil, false},
 		{"composer.update rejected", content.Composer{}, content.ErrInvalidResource, true},
-		{"composer.update error", content.Composer{}, errors.New("oops"), true},
+		{"composer.update error", content.Composer{
+			FullName:  "Foo",
+			ShortName: "Bar",
+		}, errors.New("oops"), true},
 	}
 
 	for _, tt := range tests {
@@ -202,7 +208,7 @@ func TestComposerService_Update(t *testing.T) {
 			composer, err := svc.Update(testContext(), tt.composer)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, composer)
 			} else {
 				require.NoError(t, err)

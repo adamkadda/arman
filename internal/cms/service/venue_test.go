@@ -74,7 +74,7 @@ func TestVenueService_Get(t *testing.T) {
 			venue, err := svc.Get(testContext(), 1)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, venue)
 			} else {
 				require.NoError(t, err)
@@ -237,11 +237,11 @@ func TestVenueService_Delete(t *testing.T) {
 			Venue:      content.Venue{Name: "foo"},
 			EventCount: 0,
 		}, nil, false},
+		{"venue.get_with_details error", nil, errors.New("oops"), true},
 		{"venue.delete blocked", &models.VenueWithDetails{
 			Venue:      content.Venue{Name: "foo"},
 			EventCount: 1,
 		}, content.ErrVenueProtected, true},
-		{"venue.get_with_details error", nil, content.ErrResourceNotFound, true},
 		{"venue.delete error", nil, errors.New("oops"), true},
 	}
 
