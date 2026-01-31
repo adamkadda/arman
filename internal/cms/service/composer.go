@@ -11,14 +11,31 @@ import (
 	"github.com/adamkadda/arman/pkg/logging"
 )
 
+// ComposerService contains application logic for composers.
+//
+// Stores are created via a constructor function to keep the service decoupled
+// from concrete store implementations and easy to unit test.
 type ComposerService struct {
-	db DB
+	db               DB
+	newComposerStore func(db store.Executor) ComposerStore
 }
 
 func NewComposerService(db DB) *ComposerService {
 	return &ComposerService{
 		db: db,
+		newComposerStore: func(db store.Executor) ComposerStore {
+			return store.NewComposerStore(db)
+		},
 	}
+}
+
+type ComposerStore interface {
+	Get(ctx context.Context, id int) (*content.Composer, error)
+	GetWithDetails(ctx context.Context, id int) (*models.ComposerWithDetails, error)
+	ListWithDetails(ctx context.Context) ([]models.ComposerWithDetails, error)
+	Create(ctx context.Context, c content.Composer) (*content.Composer, error)
+	Update(ctx context.Context, c content.Composer) (*content.Composer, error)
+	Delete(ctx context.Context, id int) error
 }
 
 // Get returns a single Composer by id.
@@ -35,7 +52,7 @@ func (s *ComposerService) Get(
 		"get composer",
 	)
 
-	composerStore := store.NewComposerStore(s.db)
+	composerStore := s.newComposerStore(s.db)
 
 	composer, err := composerStore.Get(ctx, id)
 	if err != nil {
@@ -63,7 +80,7 @@ func (s *ComposerService) List(
 		"list composers",
 	)
 
-	composerStore := store.NewComposerStore(s.db)
+	composerStore := s.newComposerStore(s.db)
 
 	composerList, err := composerStore.ListWithDetails(ctx)
 	if err != nil {
@@ -105,7 +122,7 @@ func (s *ComposerService) Create(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	composerStore := store.NewComposerStore(s.db)
+	composerStore := s.newComposerStore(s.db)
 
 	composer, err := composerStore.Create(ctx, c)
 	if err != nil {
@@ -149,7 +166,7 @@ func (s *ComposerService) Update(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	composerStore := store.NewComposerStore(s.db)
+	composerStore := s.newComposerStore(s.db)
 
 	composer, err := composerStore.Update(ctx, c)
 	if err != nil {
@@ -181,7 +198,7 @@ func (s *ComposerService) Delete(
 		"delete composer",
 	)
 
-	composerStore := store.NewComposerStore(s.db)
+	composerStore := s.newComposerStore(s.db)
 
 	composerWithDetails, err := composerStore.GetWithDetails(ctx, id)
 	if err != nil {
