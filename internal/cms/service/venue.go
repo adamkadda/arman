@@ -11,14 +11,32 @@ import (
 	"github.com/adamkadda/arman/pkg/logging"
 )
 
+// VenueService contains application logic for venues.
+//
+// Stores are created via a constructor function to keep the service decoupled
+// from concrete store implementations and easy to unit test.
 type VenueService struct {
-	db DB
+	db            DB
+	newVenueStore func(db store.Executor) VenueStore
 }
 
+// NewVenueService creates a VenueService using the default store constructor.
 func NewVenueService(db DB) *VenueService {
 	return &VenueService{
 		db: db,
+		newVenueStore: func(db store.Executor) VenueStore {
+			return store.NewVenueStore(db)
+		},
 	}
+}
+
+type VenueStore interface {
+	Get(ctx context.Context, id int) (*content.Venue, error)
+	GetWithDetails(ctx context.Context, id int) (*models.VenueWithDetails, error)
+	ListWithDetails(ctx context.Context) ([]models.VenueWithDetails, error)
+	Create(ctx context.Context, v content.Venue) (*content.Venue, error)
+	Update(ctx context.Context, v content.Venue) (*content.Venue, error)
+	Delete(ctx context.Context, id int) error
 }
 
 // Get returns a Venue by id.
@@ -35,13 +53,13 @@ func (s *VenueService) Get(
 		"get venue",
 	)
 
-	venueStore := store.NewVenueStore(s.db)
+	venueStore := s.newVenueStore(s.db)
 
 	venue, err := venueStore.Get(ctx, id)
 	if err != nil {
 		logger.Error(
 			"get composer failed",
-			slog.String("step", "venuve.get"),
+			slog.String("step", "venue.get"),
 			slog.Any("error", err),
 		)
 
@@ -63,7 +81,7 @@ func (s *VenueService) List(
 		"list venues",
 	)
 
-	venueStore := store.NewVenueStore(s.db)
+	venueStore := s.newVenueStore(s.db)
 
 	venueList, err := venueStore.ListWithDetails(ctx)
 	if err != nil {
@@ -81,7 +99,7 @@ func (s *VenueService) List(
 
 // Create attempts to create a Venue.
 //
-// Create first validates the passed Venue. The passed Composer should
+// Create first validates the passed Venue. The passed Venue should
 // describe the desired state. Upon successful creation, Create returns the
 // newly created Venue. Otherwise it returns an error.
 func (s *VenueService) Create(
@@ -96,7 +114,7 @@ func (s *VenueService) Create(
 		"update venue",
 	)
 
-	venueStore := store.NewVenueStore(s.db)
+	venueStore := s.newVenueStore(s.db)
 
 	if err := v.Validate(); err != nil {
 		logger.Warn(
@@ -140,7 +158,7 @@ func (s *VenueService) Update(
 		"update venue",
 	)
 
-	venueStore := store.NewVenueStore(s.db)
+	venueStore := s.newVenueStore(s.db)
 
 	if err := v.Validate(); err != nil {
 		logger.Warn(
@@ -182,7 +200,7 @@ func (s *VenueService) Delete(
 		"delete venue",
 	)
 
-	venueStore := store.NewVenueStore(s.db)
+	venueStore := s.newVenueStore(s.db)
 
 	venueWithDetails, err := venueStore.GetWithDetails(ctx, id)
 	if err != nil {
