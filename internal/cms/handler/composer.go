@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
 )
@@ -75,7 +75,7 @@ type composerWithDetailsResponse struct {
 }
 
 func newComposerWithDetailsResponse(
-	c *models.ComposerWithDetails,
+	c *model.ComposerWithDetails,
 ) composerWithDetailsResponse {
 	return composerWithDetailsResponse{
 		ID:         c.Composer.ID,

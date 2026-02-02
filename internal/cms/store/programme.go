@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/content"
 )
 
@@ -31,8 +31,8 @@ func (r *programmeRow) toProgramme() content.Programme {
 	}
 }
 
-func (r *programmeRow) toProgrammeWithDetails() models.ProgrammeWithDetails {
-	return models.ProgrammeWithDetails{
+func (r *programmeRow) toProgrammeWithDetails() model.ProgrammeWithDetails {
+	return model.ProgrammeWithDetails{
 		Programme:  r.toProgramme(),
 		EventCount: r.eventCount,
 	}
@@ -68,7 +68,7 @@ func (s *ProgrammeStore) Get(
 func (s *ProgrammeStore) GetWithDetails(
 	ctx context.Context,
 	id int,
-) (*models.ProgrammeWithDetails, error) {
+) (*model.ProgrammeWithDetails, error) {
 	query := `
 	SELECT
 		programme_id,
@@ -105,7 +105,7 @@ func (s *ProgrammeStore) GetWithDetails(
 // separation of concerns.
 func (s *ProgrammeStore) ListWithDetails(
 	ctx context.Context,
-) ([]models.ProgrammeWithDetails, error) {
+) ([]model.ProgrammeWithDetails, error) {
 	query := `
 	SELECT
 		programme_id,
@@ -131,7 +131,7 @@ func (s *ProgrammeStore) ListWithDetails(
 		return nil, err
 	}
 
-	programmes := make([]models.ProgrammeWithDetails, len(rows))
+	programmes := make([]model.ProgrammeWithDetails, len(rows))
 	for i, row := range rows {
 		programmes[i] = row.toProgrammeWithDetails()
 	}

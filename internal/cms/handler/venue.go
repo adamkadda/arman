@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
 )
@@ -34,26 +34,52 @@ func (h *VenueHandler) Register(mux *http.ServeMux) {
 }
 
 type venueRequest struct {
-	Name         string `json:"venue_name"`
+	Operation model.Operation `json:"operation"`
+	ID        *int            `json:"id"`
+	Data      *venueData      `json:"data"`
+}
+
+func (r venueRequest) Validate() error {
+	if err := r.Operation.Validate(); err != nil {
+		return err
+	}
+
+	if r.Data == nil {
+		return model.ErrMissingData
+	}
+
+	return nil
+}
+
+func (r venueRequest) toCommand() model.UpsertVenueCommand {
+	venueIntent := model.VenueIntent{
+		Operation: r.Operation,
+		Data:      r.Data.toDomain(r.ID),
+	}
+
+	return model.UpsertVenueCommand{
+		Venue: venueIntent,
+	}
+}
+
+type venueData struct {
+	Name         string `json:"name"`
 	FullAddress  string `json:"full_address"`
 	ShortAddress string `json:"short_address"`
 }
 
-func (r *venueRequest) toDomain() content.Venue {
-	return content.Venue{
-		Name:         r.Name,
-		FullAddress:  r.FullAddress,
-		ShortAddress: r.ShortAddress,
+func (d venueData) toDomain(id *int) content.Venue {
+	venue := content.Venue{
+		Name:         d.Name,
+		FullAddress:  d.FullAddress,
+		ShortAddress: d.ShortAddress,
 	}
-}
 
-func (r *venueRequest) toDomainWithID(id int) content.Venue {
-	return content.Venue{
-		ID:           id,
-		Name:         r.Name,
-		FullAddress:  r.FullAddress,
-		ShortAddress: r.ShortAddress,
+	if id != nil {
+		venue.ID = *id
 	}
+
+	return venue
 }
 
 type venueResponse struct {
@@ -80,7 +106,7 @@ type venueWithDetailsResponse struct {
 }
 
 func newVenueWithDetailsResponse(
-	v *models.VenueWithDetails,
+	v *model.VenueWithDetails,
 ) venueWithDetailsResponse {
 	return venueWithDetailsResponse{
 		ID:           v.Venue.ID,
@@ -147,7 +173,15 @@ func (h *VenueHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	venue, err := h.venueService.Create(r.Context(), req.toDomain())
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	venue, err := h.venueService.Create(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
@@ -182,7 +216,17 @@ func (h *VenueHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	venue, err := h.venueService.Update(r.Context(), req.toDomainWithID(id))
+	req.ID = &id
+
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	venue, err := h.venueService.Update(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,

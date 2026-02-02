@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
@@ -31,8 +31,8 @@ func NewComposerService(db DB) *ComposerService {
 
 type ComposerStore interface {
 	Get(ctx context.Context, id int) (*content.Composer, error)
-	GetWithDetails(ctx context.Context, id int) (*models.ComposerWithDetails, error)
-	ListWithDetails(ctx context.Context) ([]models.ComposerWithDetails, error)
+	GetWithDetails(ctx context.Context, id int) (*model.ComposerWithDetails, error)
+	ListWithDetails(ctx context.Context) ([]model.ComposerWithDetails, error)
 	Create(ctx context.Context, c content.Composer) (*content.Composer, error)
 	Update(ctx context.Context, c content.Composer) (*content.Composer, error)
 	Delete(ctx context.Context, id int) error
@@ -71,7 +71,7 @@ func (s *ComposerService) Get(
 // List returns an array of ComposerWithDetails, sorted by id.
 func (s *ComposerService) List(
 	ctx context.Context,
-) ([]models.ComposerWithDetails, error) {
+) ([]model.ComposerWithDetails, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "composer.list"),
 	)

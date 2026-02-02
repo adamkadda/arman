@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/stretchr/testify/require"
@@ -13,8 +13,8 @@ import (
 
 type mockPieceStore struct {
 	piece          *content.Piece
-	detailedPieces []models.PieceWithDetails
-	detailedPiece  *models.PieceWithDetails
+	detailedPieces []model.PieceWithDetails
+	detailedPiece  *model.PieceWithDetails
 	err            error
 	getErr         error
 	deleteErr      error
@@ -30,13 +30,13 @@ func (s mockPieceStore) Get(
 func (s mockPieceStore) GetWithDetails(
 	ctx context.Context,
 	id int,
-) (*models.PieceWithDetails, error) {
+) (*model.PieceWithDetails, error) {
 	return s.detailedPiece, s.getErr
 }
 
 func (s mockPieceStore) ListWithDetails(
 	ctx context.Context,
-) ([]models.PieceWithDetails, error) {
+) ([]model.PieceWithDetails, error) {
 	return s.detailedPieces, s.err
 }
 
@@ -101,11 +101,11 @@ func TestPieceService_Get(t *testing.T) {
 func TestPieceService_List(t *testing.T) {
 	tests := []struct {
 		name    string
-		pieces  []models.PieceWithDetails
+		pieces  []model.PieceWithDetails
 		err     error
 		wantErr bool
 	}{
-		{"piece.list success", []models.PieceWithDetails{
+		{"piece.list success", []model.PieceWithDetails{
 			{
 				Piece:          content.Piece{Title: "foo"},
 				ProgrammeCount: 0,
@@ -227,14 +227,14 @@ func TestPieceService_Update(t *testing.T) {
 func TestPieceService_Delete(t *testing.T) {
 	tests := []struct {
 		name          string
-		piece         *models.PieceWithDetails
+		piece         *model.PieceWithDetails
 		getErr        error
 		deleteErr     error
 		expectedError error
 	}{
 		{
 			name: "piece.delete success",
-			piece: &models.PieceWithDetails{
+			piece: &model.PieceWithDetails{
 				Piece:          content.Piece{Title: "foo"},
 				ProgrammeCount: 0,
 			},
@@ -251,7 +251,7 @@ func TestPieceService_Delete(t *testing.T) {
 		},
 		{
 			name: "piece.delete blocked",
-			piece: &models.PieceWithDetails{
+			piece: &model.PieceWithDetails{
 				Piece:          content.Piece{Title: "foo"},
 				ProgrammeCount: 1,
 			},
@@ -261,7 +261,7 @@ func TestPieceService_Delete(t *testing.T) {
 		},
 		{
 			name: "piece.delete error",
-			piece: &models.PieceWithDetails{
+			piece: &model.PieceWithDetails{
 				Piece:          content.Piece{Title: "foo"},
 				ProgrammeCount: 0,
 			},

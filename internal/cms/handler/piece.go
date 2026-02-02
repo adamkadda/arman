@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
 )
@@ -73,7 +73,7 @@ type pieceWithDetailsResponse struct {
 }
 
 func newPieceWithDetailsResponse(
-	p *models.PieceWithDetails,
+	p *model.PieceWithDetails,
 ) pieceWithDetailsResponse {
 	return pieceWithDetailsResponse{
 		ID:             p.Piece.ID,

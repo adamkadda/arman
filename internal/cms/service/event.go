@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
@@ -25,7 +25,7 @@ func NewEventService(db DB) *EventService {
 func (s *EventService) Get(
 	ctx context.Context,
 	id int,
-) (*models.EventWithProgramme, error) {
+) (*model.EventWithProgramme, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "event.get"),
 		slog.Int("event_id", id),
@@ -74,9 +74,9 @@ func (s *EventService) Get(
 		return nil, err
 	}
 
-	event := &models.EventWithProgramme{
+	event := &model.EventWithProgramme{
 		Event: e,
-		Programme: &models.ProgrammeWithPieces{
+		Programme: &model.ProgrammeWithPieces{
 			Programme: p,
 			Pieces:    pp,
 		},
@@ -132,7 +132,7 @@ func (s *EventService) ListWithTimestamp(
 	ctx context.Context,
 	status *content.Status,
 	timeframe *content.Timeframe,
-) ([]models.EventWithTimestamps, error) {
+) ([]model.EventWithTimestamps, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "event.list_with_timestamps"),
 		slog.Group("filters",
@@ -209,7 +209,7 @@ func (s *EventService) Create(
 func (s *EventService) Update(
 	ctx context.Context,
 	e content.Event,
-) (*models.EventWithProgramme, error) {
+) (*model.EventWithProgramme, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "event.update"),
 		slog.Int("event_id", e.ID),
@@ -311,9 +311,9 @@ func (s *EventService) Update(
 		return nil, err
 	}
 
-	eventWithProgramme := &models.EventWithProgramme{
+	eventWithProgramme := &model.EventWithProgramme{
 		Event: event,
-		Programme: &models.ProgrammeWithPieces{
+		Programme: &model.ProgrammeWithPieces{
 			Programme: programme,
 			Pieces:    programmePieces,
 		},

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/stretchr/testify/require"
@@ -14,8 +14,8 @@ import (
 type mockVenueStore struct {
 	venues         []content.Venue
 	venue          *content.Venue
-	detailedVenue  *models.VenueWithDetails
-	detailedVenues []models.VenueWithDetails
+	detailedVenue  *model.VenueWithDetails
+	detailedVenues []model.VenueWithDetails
 	err            error
 	getErr         error
 	deleteErr      error
@@ -25,11 +25,11 @@ func (s mockVenueStore) Get(ctx context.Context, id int) (*content.Venue, error)
 	return s.venue, s.err
 }
 
-func (s mockVenueStore) GetWithDetails(ctx context.Context, id int) (*models.VenueWithDetails, error) {
+func (s mockVenueStore) GetWithDetails(ctx context.Context, id int) (*model.VenueWithDetails, error) {
 	return s.detailedVenue, s.getErr
 }
 
-func (s mockVenueStore) ListWithDetails(ctx context.Context) ([]models.VenueWithDetails, error) {
+func (s mockVenueStore) ListWithDetails(ctx context.Context) ([]model.VenueWithDetails, error) {
 	return s.detailedVenues, s.err
 }
 
@@ -85,11 +85,11 @@ func TestVenueService_Get(t *testing.T) {
 func TestVenueService_List(t *testing.T) {
 	tests := []struct {
 		name    string
-		venues  []models.VenueWithDetails
+		venues  []model.VenueWithDetails
 		err     error
 		wantErr bool
 	}{
-		{"venue.list success", []models.VenueWithDetails{
+		{"venue.list success", []model.VenueWithDetails{
 			{
 				Venue:      content.Venue{Name: "foo"},
 				EventCount: 0,
@@ -135,21 +135,76 @@ func TestVenueService_List(t *testing.T) {
 func TestVenueService_Create(t *testing.T) {
 	tests := []struct {
 		name    string
-		venue   content.Venue
+		cmd     model.UpsertVenueCommand
+		venue   *content.Venue
 		err     error
 		wantErr bool
 	}{
-		{"venue.create success", content.Venue{
-			Name:         "Foo Hall",
-			FullAddress:  "22 Bar Street. Baz Town",
-			ShortAddress: "22 Bar Street.",
-		}, nil, false},
-		{"venue.create rejected", content.Venue{}, content.ErrInvalidResource, true},
-		{"venue.create error", content.Venue{
-			Name:         "Foo Hall",
-			FullAddress:  "22 Bar Street. Baz Town",
-			ShortAddress: "22 Bar Street.",
-		}, errors.New("oops"), true},
+		{
+			"operation mismatch",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Venue{
+						Name:         "Foo Hall",
+						FullAddress:  "22 Bar St. Baz Town",
+						ShortAddress: "22 Bar St.",
+					},
+				},
+			},
+			nil,
+			content.ErrOperationMismatch,
+			true,
+		},
+		{
+			"invalid input venue",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationCreate,
+					Data:      content.Venue{},
+				},
+			},
+			nil,
+			content.ErrInvalidResource,
+			true,
+		},
+		{
+			"store error",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationCreate,
+					Data: content.Venue{
+						Name:         "Foo Hall",
+						FullAddress:  "22 Bar St. Baz Town",
+						ShortAddress: "22 Bar St.",
+					},
+				},
+			},
+			nil,
+			ErrFoo,
+			true,
+		},
+		{
+			"success",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationCreate,
+					Data: content.Venue{
+						Name:         "Foo Hall",
+						FullAddress:  "22 Bar St. Baz Town",
+						ShortAddress: "22 Bar St.",
+					},
+				},
+			},
+			&content.Venue{
+				ID:           1,
+				Name:         "Foo Hall",
+				FullAddress:  "22 Bar St. Baz Town",
+				ShortAddress: "22 Bar St.",
+			},
+			nil,
+			false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -159,20 +214,20 @@ func TestVenueService_Create(t *testing.T) {
 			svc := VenueService{
 				newVenueStore: func(db store.Executor) VenueStore {
 					return mockVenueStore{
-						venue: &tt.venue,
+						venue: tt.venue,
 						err:   tt.err,
 					}
 				},
 			}
 
-			venue, err := svc.Create(testContext(), tt.venue)
+			venue, err := svc.Create(testContext(), tt.cmd)
 
 			if tt.wantErr {
 				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, venue)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &tt.venue, venue)
+				require.Equal(t, tt.venue, venue)
 			}
 		})
 	}
@@ -181,21 +236,81 @@ func TestVenueService_Create(t *testing.T) {
 func TestVenueService_Update(t *testing.T) {
 	tests := []struct {
 		name    string
-		venue   content.Venue
+		cmd     model.UpsertVenueCommand
+		venue   *content.Venue
 		err     error
 		wantErr bool
 	}{
-		{"venue.update success", content.Venue{
-			Name:         "Foo Hall",
-			FullAddress:  "22 Bar Street. Baz Town",
-			ShortAddress: "22 Bar Street.",
-		}, nil, false},
-		{"venue.update rejected", content.Venue{}, content.ErrInvalidResource, true},
-		{"venue.update error", content.Venue{
-			Name:         "Foo Hall",
-			FullAddress:  "22 Bar Street. Baz Town",
-			ShortAddress: "22 Bar Street.",
-		}, errors.New("oops"), true},
+		{
+			"operation mismatch",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationCreate,
+					Data: content.Venue{
+						ID:           1,
+						Name:         "Foo Hall",
+						FullAddress:  "22 Bar St. Baz Town",
+						ShortAddress: "22 Bar St.",
+					},
+				},
+			},
+			nil,
+			content.ErrOperationMismatch,
+			true,
+		},
+		{
+			"invalid input venue",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Venue{
+						ID: 1,
+					},
+				},
+			},
+			nil,
+			content.ErrInvalidResource,
+			true,
+		},
+		{
+			"store error",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Venue{
+						ID:           1,
+						Name:         "Foo Hall",
+						FullAddress:  "22 Bar St. Baz Town",
+						ShortAddress: "22 Bar St.",
+					},
+				},
+			},
+			nil,
+			ErrFoo,
+			true,
+		},
+		{
+			"success",
+			model.UpsertVenueCommand{
+				Venue: model.VenueIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Venue{
+						ID:           1,
+						Name:         "Foo Hall",
+						FullAddress:  "22 Bar St. Baz Town",
+						ShortAddress: "22 Bar St.",
+					},
+				},
+			},
+			&content.Venue{
+				ID:           1,
+				Name:         "Foo Hall",
+				FullAddress:  "22 Bar St. Baz Town",
+				ShortAddress: "22 Bar St.",
+			},
+			nil,
+			false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -205,20 +320,20 @@ func TestVenueService_Update(t *testing.T) {
 			svc := VenueService{
 				newVenueStore: func(db store.Executor) VenueStore {
 					return mockVenueStore{
-						venue: &tt.venue,
+						venue: tt.venue,
 						err:   tt.err,
 					}
 				},
 			}
 
-			venue, err := svc.Update(testContext(), tt.venue)
+			venue, err := svc.Update(testContext(), tt.cmd)
 
 			if tt.wantErr {
 				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, venue)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &tt.venue, venue)
+				require.Equal(t, tt.venue, venue)
 			}
 		})
 	}
@@ -227,14 +342,14 @@ func TestVenueService_Update(t *testing.T) {
 func TestVenueService_Delete(t *testing.T) {
 	tests := []struct {
 		name          string
-		venue         *models.VenueWithDetails
+		venue         *model.VenueWithDetails
 		getErr        error
 		deleteErr     error
 		expectedError error
 	}{
 		{
 			name: "venue.delete success",
-			venue: &models.VenueWithDetails{
+			venue: &model.VenueWithDetails{
 				Venue:      content.Venue{Name: "foo"},
 				EventCount: 0,
 			},
@@ -251,7 +366,7 @@ func TestVenueService_Delete(t *testing.T) {
 		},
 		{
 			name: "venue.delete blocked",
-			venue: &models.VenueWithDetails{
+			venue: &model.VenueWithDetails{
 				Venue:      content.Venue{Name: "foo"},
 				EventCount: 1,
 			},
@@ -261,7 +376,7 @@ func TestVenueService_Delete(t *testing.T) {
 		},
 		{
 			name: "venue.delete error",
-			venue: &models.VenueWithDetails{
+			venue: &model.VenueWithDetails{
 				Venue:      content.Venue{Name: "foo"},
 				EventCount: 0,
 			},

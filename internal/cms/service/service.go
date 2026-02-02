@@ -108,6 +108,9 @@ type DB interface {
 }
 
 var reasons = map[error]string{
+	// General
+	content.ErrOperationMismatch: "operation_mismatch",
+
 	// Composer
 	content.ErrComposerFullNameEmpty:  "composer_full_name_empty",
 	content.ErrComposerShortNameEmpty: "composer_short_name_empty",

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
 )
@@ -71,7 +71,7 @@ type programmeWithDetailsResponse struct {
 }
 
 func newProgrammeWithDetailsResponse(
-	p *models.ProgrammeWithDetails,
+	p *model.ProgrammeWithDetails,
 ) programmeWithDetailsResponse {
 	return programmeWithDetailsResponse{
 		ID:         p.Programme.ID,
@@ -102,7 +102,7 @@ type programmeWithPiecesResponse struct {
 }
 
 func newProgrammeWithPiecesResponse(
-	p *models.ProgrammeWithPieces,
+	p *model.ProgrammeWithPieces,
 ) programmeWithPiecesResponse {
 	programmes := make([]programmePieceResponse, len(p.Pieces))
 	for i, pp := range p.Pieces {

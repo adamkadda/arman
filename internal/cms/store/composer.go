@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/content"
 )
 
@@ -33,8 +33,8 @@ func (r *composerRow) toComposer() content.Composer {
 	}
 }
 
-func (r *composerRow) toComposerWithDetails() models.ComposerWithDetails {
-	return models.ComposerWithDetails{
+func (r *composerRow) toComposerWithDetails() model.ComposerWithDetails {
+	return model.ComposerWithDetails{
 		Composer:   r.toComposer(),
 		PieceCount: r.pieceCount,
 	}
@@ -71,7 +71,7 @@ func (s *ComposerStore) Get(
 func (s *ComposerStore) GetWithDetails(
 	ctx context.Context,
 	id int,
-) (*models.ComposerWithDetails, error) {
+) (*model.ComposerWithDetails, error) {
 	query := `
 	SELECT
 		composer_id,
@@ -105,7 +105,7 @@ func (s *ComposerStore) GetWithDetails(
 
 func (s *ComposerStore) ListWithDetails(
 	ctx context.Context,
-) ([]models.ComposerWithDetails, error) {
+) ([]model.ComposerWithDetails, error) {
 	query := `
 	SELECT
 		composer_id,
@@ -131,7 +131,7 @@ func (s *ComposerStore) ListWithDetails(
 		return nil, err
 	}
 
-	composers := make([]models.ComposerWithDetails, len(rows))
+	composers := make([]model.ComposerWithDetails, len(rows))
 	for i, row := range rows {
 		composers[i] = row.toComposerWithDetails()
 	}

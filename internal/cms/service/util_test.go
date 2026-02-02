@@ -36,6 +36,7 @@ func testContext() context.Context {
 }
 
 var (
+	ErrFoo    = errors.New("oops")
 	ErrGet    = errors.New("get error")
 	ErrDelete = errors.New("delete error")
 )

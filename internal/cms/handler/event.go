@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/service"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
@@ -108,7 +108,7 @@ type eventWithTimestampsResponse struct {
 }
 
 func newEventWithTimestampsResponse(
-	e *models.EventWithTimestamps,
+	e *model.EventWithTimestamps,
 ) eventWithTimestampsResponse {
 	return eventWithTimestampsResponse{
 		ID:          e.Event.ID,
@@ -137,7 +137,7 @@ type eventWithProgrammeResponse struct {
 }
 
 func newEventWithProgrammeResponse(
-	e *models.EventWithProgramme,
+	e *model.EventWithProgramme,
 ) eventWithProgrammeResponse {
 	programme := newProgrammeWithPiecesResponse(e.Programme)
 	return eventWithProgrammeResponse{
@@ -251,7 +251,7 @@ func (h *EventHandler) list(w http.ResponseWriter, r *http.Request) {
 				resp[i] = newEventResponse(&e[i])
 			}
 			return resp
-		case []models.EventWithTimestamps:
+		case []model.EventWithTimestamps:
 			resp := make([]eventWithTimestampsResponse, len(e))
 			for i := range e {
 				resp[i] = newEventWithTimestampsResponse(&e[i])

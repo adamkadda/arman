@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
@@ -25,15 +25,15 @@ func NewVenueService(db DB) *VenueService {
 	return &VenueService{
 		db: db,
 		newVenueStore: func(db store.Executor) VenueStore {
-			return store.NewVenueStore(db)
+			return store.NewPostgresVenueStore(db)
 		},
 	}
 }
 
 type VenueStore interface {
 	Get(ctx context.Context, id int) (*content.Venue, error)
-	GetWithDetails(ctx context.Context, id int) (*models.VenueWithDetails, error)
-	ListWithDetails(ctx context.Context) ([]models.VenueWithDetails, error)
+	GetWithDetails(ctx context.Context, id int) (*model.VenueWithDetails, error)
+	ListWithDetails(ctx context.Context) ([]model.VenueWithDetails, error)
 	Create(ctx context.Context, v content.Venue) (*content.Venue, error)
 	Update(ctx context.Context, v content.Venue) (*content.Venue, error)
 	Delete(ctx context.Context, id int) error
@@ -72,7 +72,7 @@ func (s *VenueService) Get(
 // List returns an array of VenueWithDetails, sorted by id.
 func (s *VenueService) List(
 	ctx context.Context,
-) ([]models.VenueWithDetails, error) {
+) ([]model.VenueWithDetails, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "venue.list"),
 	)
@@ -104,19 +104,28 @@ func (s *VenueService) List(
 // newly created Venue. Otherwise it returns an error.
 func (s *VenueService) Create(
 	ctx context.Context,
-	v content.Venue,
+	cmd model.UpsertVenueCommand,
 ) (*content.Venue, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "venue.create"),
 	)
 
 	logger.Info(
-		"update venue",
+		"create venue",
 	)
+
+	if cmd.Venue.Operation != model.OperationCreate {
+		logger.Warn(
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
 
 	venueStore := s.newVenueStore(s.db)
 
-	if err := v.Validate(); err != nil {
+	if err := cmd.Venue.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate venue rejected",
 			slog.String("reason", reason(err)),
@@ -125,7 +134,7 @@ func (s *VenueService) Create(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	venue, err := venueStore.Create(ctx, v)
+	venue, err := venueStore.Create(ctx, cmd.Venue.Data)
 	if err != nil {
 		logger.Error(
 			"create venue failed",
@@ -147,20 +156,29 @@ func (s *VenueService) Create(
 // Venue. Otherwise it returns an error.
 func (s *VenueService) Update(
 	ctx context.Context,
-	v content.Venue,
+	cmd model.UpsertVenueCommand,
 ) (*content.Venue, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "venue.update"),
-		slog.Int("venue_id", v.ID),
+		slog.Int("venue_id", cmd.Venue.Data.ID),
 	)
 
 	logger.Info(
 		"update venue",
 	)
 
+	if cmd.Venue.Operation != model.OperationUpdate {
+		logger.Warn(
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
 	venueStore := s.newVenueStore(s.db)
 
-	if err := v.Validate(); err != nil {
+	if err := cmd.Venue.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate venue rejected",
 			slog.String("reason", reason(err)),
@@ -169,7 +187,7 @@ func (s *VenueService) Update(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	venue, err := venueStore.Update(ctx, v)
+	venue, err := venueStore.Update(ctx, cmd.Venue.Data)
 	if err != nil {
 		logger.Error(
 			"update venue failed",

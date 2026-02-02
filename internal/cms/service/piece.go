@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
@@ -27,8 +27,8 @@ func NewPieceService(db DB) *PieceService {
 
 type PieceStore interface {
 	Get(ctx context.Context, id int) (*content.Piece, error)
-	GetWithDetails(ctx context.Context, id int) (*models.PieceWithDetails, error)
-	ListWithDetails(ctx context.Context) ([]models.PieceWithDetails, error)
+	GetWithDetails(ctx context.Context, id int) (*model.PieceWithDetails, error)
+	ListWithDetails(ctx context.Context) ([]model.PieceWithDetails, error)
 	Create(ctx context.Context, p content.Piece) (*content.Piece, error)
 	Update(ctx context.Context, p content.Piece) (*content.Piece, error)
 	Delete(ctx context.Context, id int) error
@@ -67,7 +67,7 @@ func (s *PieceService) Get(
 // List returns an array of PieceWithDetails, sorted by id.
 func (s *PieceService) List(
 	ctx context.Context,
-) ([]models.PieceWithDetails, error) {
+) ([]model.PieceWithDetails, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "piece.list"),
 	)

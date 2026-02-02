@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/stretchr/testify/require"
@@ -14,8 +14,8 @@ import (
 type mockComposerStore struct {
 	composers         []content.Composer
 	composer          *content.Composer
-	detailedComposers []models.ComposerWithDetails
-	detailedComposer  *models.ComposerWithDetails
+	detailedComposers []model.ComposerWithDetails
+	detailedComposer  *model.ComposerWithDetails
 	err               error
 	getErr            error
 	deleteErr         error
@@ -25,11 +25,11 @@ func (s mockComposerStore) Get(ctx context.Context, id int) (*content.Composer, 
 	return s.composer, s.err
 }
 
-func (s mockComposerStore) GetWithDetails(ctx context.Context, id int) (*models.ComposerWithDetails, error) {
+func (s mockComposerStore) GetWithDetails(ctx context.Context, id int) (*model.ComposerWithDetails, error) {
 	return s.detailedComposer, s.getErr
 }
 
-func (s mockComposerStore) ListWithDetails(ctx context.Context) ([]models.ComposerWithDetails, error) {
+func (s mockComposerStore) ListWithDetails(ctx context.Context) ([]model.ComposerWithDetails, error) {
 	return s.detailedComposers, s.err
 }
 
@@ -85,11 +85,11 @@ func TestComposerService_Get(t *testing.T) {
 func TestComposerService_List(t *testing.T) {
 	tests := []struct {
 		name      string
-		composers []models.ComposerWithDetails
+		composers []model.ComposerWithDetails
 		err       error
 		wantErr   bool
 	}{
-		{"composer.list success", []models.ComposerWithDetails{
+		{"composer.list success", []model.ComposerWithDetails{
 			{
 				Composer:   content.Composer{FullName: "foo"},
 				PieceCount: 0,
@@ -223,14 +223,14 @@ func TestComposerService_Update(t *testing.T) {
 func TestComposerService_Delete(t *testing.T) {
 	tests := []struct {
 		name          string
-		composer      *models.ComposerWithDetails
+		composer      *model.ComposerWithDetails
 		getErr        error
 		deleteErr     error
 		expectedError error
 	}{
 		{
 			name: "composer.delete success",
-			composer: &models.ComposerWithDetails{
+			composer: &model.ComposerWithDetails{
 				Composer:   content.Composer{FullName: "foo"},
 				PieceCount: 0,
 			},
@@ -247,7 +247,7 @@ func TestComposerService_Delete(t *testing.T) {
 		},
 		{
 			name: "composer.delete blocked",
-			composer: &models.ComposerWithDetails{
+			composer: &model.ComposerWithDetails{
 				Composer:   content.Composer{FullName: "foo"},
 				PieceCount: 1,
 			},
@@ -257,7 +257,7 @@ func TestComposerService_Delete(t *testing.T) {
 		},
 		{
 			name: "composer.delete error",
-			composer: &models.ComposerWithDetails{
+			composer: &model.ComposerWithDetails{
 				Composer:   content.Composer{FullName: "foo"},
 				PieceCount: 0,
 			},

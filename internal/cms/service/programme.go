@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/cms/store"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/adamkadda/arman/pkg/logging"
@@ -25,7 +25,7 @@ func NewProgrammeService(db DB) *ProgrammeService {
 func (s *ProgrammeService) Get(
 	ctx context.Context,
 	id int,
-) (*models.ProgrammeWithPieces, error) {
+) (*model.ProgrammeWithPieces, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "programme.get"),
 		slog.Int("programme_id", id),
@@ -61,7 +61,7 @@ func (s *ProgrammeService) Get(
 		return nil, err
 	}
 
-	programme := &models.ProgrammeWithPieces{
+	programme := &model.ProgrammeWithPieces{
 		Programme: p,
 		Pieces:    pp,
 	}
@@ -72,7 +72,7 @@ func (s *ProgrammeService) Get(
 // List returns an array of ProgrammeWithDetails, sorted by id.
 func (s *ProgrammeService) List(
 	ctx context.Context,
-) ([]models.ProgrammeWithDetails, error) {
+) ([]model.ProgrammeWithDetails, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "programme.list"),
 	)
@@ -246,7 +246,7 @@ func (s *ProgrammeService) UpdatePieces(
 	ctx context.Context,
 	id int,
 	ids []int,
-) (*models.ProgrammeWithPieces, error) {
+) (*model.ProgrammeWithPieces, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "programme.update_pieces"),
 		slog.Int("programme_id", id),
@@ -325,7 +325,7 @@ func (s *ProgrammeService) UpdatePieces(
 		return nil, err
 	}
 
-	programme := &models.ProgrammeWithPieces{
+	programme := &model.ProgrammeWithPieces{
 		Programme: p,
 		Pieces:    pp,
 	}

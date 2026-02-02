@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/content"
 )
 
-type VenueStore struct {
+type PostgresVenueStore struct {
 	db Executor
 }
 
-func NewVenueStore(db Executor) *VenueStore {
-	return &VenueStore{
+func NewPostgresVenueStore(db Executor) *PostgresVenueStore {
+	return &PostgresVenueStore{
 		db: db,
 	}
 }
@@ -36,14 +36,14 @@ func (r *venueRow) toVenue() content.Venue {
 	}
 }
 
-func (r *venueRow) toVenueWithDetails() models.VenueWithDetails {
-	return models.VenueWithDetails{
+func (r *venueRow) toVenueWithDetails() model.VenueWithDetails {
+	return model.VenueWithDetails{
 		Venue:      r.toVenue(),
 		EventCount: r.event_count,
 	}
 }
 
-func (s *VenueStore) Get(
+func (s *PostgresVenueStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Venue, error) {
@@ -72,10 +72,10 @@ func (s *VenueStore) Get(
 	return &venue, nil
 }
 
-func (s *VenueStore) GetWithDetails(
+func (s *PostgresVenueStore) GetWithDetails(
 	ctx context.Context,
 	id int,
-) (*models.VenueWithDetails, error) {
+) (*model.VenueWithDetails, error) {
 	query := `
 	SELECT
 		venue_id,
@@ -108,9 +108,9 @@ func (s *VenueStore) GetWithDetails(
 	return &venue, nil
 }
 
-func (s *VenueStore) ListWithDetails(
+func (s *PostgresVenueStore) ListWithDetails(
 	ctx context.Context,
-) ([]models.VenueWithDetails, error) {
+) ([]model.VenueWithDetails, error) {
 	query := `
 	SELECT
 		v.venue_id,
@@ -138,7 +138,7 @@ func (s *VenueStore) ListWithDetails(
 		return nil, err
 	}
 
-	venues := make([]models.VenueWithDetails, len(rows))
+	venues := make([]model.VenueWithDetails, len(rows))
 	for i, row := range rows {
 		venues[i] = row.toVenueWithDetails()
 	}
@@ -146,7 +146,7 @@ func (s *VenueStore) ListWithDetails(
 	return venues, nil
 }
 
-func (s *VenueStore) Create(
+func (s *PostgresVenueStore) Create(
 	ctx context.Context,
 	v content.Venue,
 ) (*content.Venue, error) {
@@ -183,7 +183,7 @@ func (s *VenueStore) Create(
 	return &venue, nil
 }
 
-func (s *VenueStore) Update(
+func (s *PostgresVenueStore) Update(
 	ctx context.Context,
 	v content.Venue,
 ) (*content.Venue, error) {
@@ -221,7 +221,7 @@ func (s *VenueStore) Update(
 	return &venue, nil
 }
 
-func (s *VenueStore) Delete(
+func (s *PostgresVenueStore) Delete(
 	ctx context.Context,
 	id int,
 ) error {

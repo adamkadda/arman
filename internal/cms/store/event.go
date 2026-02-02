@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/content"
 )
 
@@ -45,8 +45,8 @@ func (r *eventRow) toEvent() content.Event {
 	}
 }
 
-func (r *eventRow) toEventWithTimestamps() models.EventWithTimestamps {
-	return models.EventWithTimestamps{
+func (r *eventRow) toEventWithTimestamps() model.EventWithTimestamps {
+	return model.EventWithTimestamps{
 		Event:     r.toEvent(),
 		CreatedAt: r.createdAt,
 		UpdatedAt: r.updatedAt,
@@ -89,7 +89,7 @@ func (s *EventStore) Get(
 func (s *EventStore) GetWithTimestamps(
 	ctx context.Context,
 	id int,
-) (*models.EventWithTimestamps, error) {
+) (*model.EventWithTimestamps, error) {
 	query := `
 	SELECT
 		event_id,
@@ -162,7 +162,7 @@ func (s *EventStore) ListWithTimestamps(
 	ctx context.Context,
 	status *content.Status,
 	timeframe *content.Timeframe,
-) ([]models.EventWithTimestamps, error) {
+) ([]model.EventWithTimestamps, error) {
 	query := `
 	SELECT
 		event_id,
@@ -189,7 +189,7 @@ func (s *EventStore) ListWithTimestamps(
 		return nil, err
 	}
 
-	events := make([]models.EventWithTimestamps, len(rows))
+	events := make([]model.EventWithTimestamps, len(rows))
 	for i, row := range rows {
 		events[i] = row.toEventWithTimestamps()
 	}

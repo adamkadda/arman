@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/adamkadda/arman/internal/cms/models"
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/content"
 )
 
@@ -33,8 +33,8 @@ func (r *pieceRow) toPiece() content.Piece {
 	}
 }
 
-func (r *pieceRow) toPieceWithDetails() models.PieceWithDetails {
-	return models.PieceWithDetails{
+func (r *pieceRow) toPieceWithDetails() model.PieceWithDetails {
+	return model.PieceWithDetails{
 		Piece:          r.toPiece(),
 		ProgrammeCount: r.programme_count,
 	}
@@ -71,7 +71,7 @@ func (s *PieceStore) Get(
 func (s *PieceStore) GetWithDetails(
 	ctx context.Context,
 	id int,
-) (*models.PieceWithDetails, error) {
+) (*model.PieceWithDetails, error) {
 	query := `
 	SELECT
 		piece_id,
@@ -105,7 +105,7 @@ func (s *PieceStore) GetWithDetails(
 
 func (s *PieceStore) ListWithDetails(
 	ctx context.Context,
-) ([]models.PieceWithDetails, error) {
+) ([]model.PieceWithDetails, error) {
 	query := `
 	SELECT
 		piece_id,
@@ -131,7 +131,7 @@ func (s *PieceStore) ListWithDetails(
 		return nil, err
 	}
 
-	pieces := make([]models.PieceWithDetails, len(rows))
+	pieces := make([]model.PieceWithDetails, len(rows))
 	for i, row := range rows {
 		pieces[i] = row.toPieceWithDetails()
 	}
