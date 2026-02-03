@@ -135,19 +135,72 @@ func TestComposerService_List(t *testing.T) {
 func TestComposerService_Create(t *testing.T) {
 	tests := []struct {
 		name     string
-		composer content.Composer
+		cmd      model.UpsertComposerCommand
+		composer *content.Composer
 		err      error
 		wantErr  bool
 	}{
-		{"composer.create success", content.Composer{
-			FullName:  "Foo",
-			ShortName: "Bar",
-		}, nil, false},
-		{"composer.create rejected", content.Composer{}, content.ErrInvalidResource, true},
-		{"composer.create error", content.Composer{
-			FullName:  "Foo",
-			ShortName: "Bar",
-		}, errors.New("oops"), true},
+		{
+			"operation mismatch",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Composer{
+						FullName:  "Foo Bar",
+						ShortName: "Bar",
+					},
+				},
+			},
+			nil,
+			content.ErrOperationMismatch,
+			true,
+		},
+		{
+			"invalid input composer",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationCreate,
+					Data:      content.Composer{},
+				},
+			},
+			nil,
+			content.ErrInvalidResource,
+			true,
+		},
+		{
+			"store error",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationCreate,
+					Data: content.Composer{
+						FullName:  "Foo Bar",
+						ShortName: "Bar",
+					},
+				},
+			},
+			nil,
+			ErrFoo,
+			true,
+		},
+		{
+			"success",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationCreate,
+					Data: content.Composer{
+						FullName:  "Foo Bar",
+						ShortName: "Bar",
+					},
+				},
+			},
+			&content.Composer{
+				ID:        1,
+				FullName:  "Foo Bar",
+				ShortName: "Bar",
+			},
+			nil,
+			false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -157,20 +210,20 @@ func TestComposerService_Create(t *testing.T) {
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
 					return mockComposerStore{
-						composer: &tt.composer,
+						composer: tt.composer,
 						err:      tt.err,
 					}
 				},
 			}
 
-			composer, err := svc.Create(testContext(), tt.composer)
+			composer, err := svc.Create(testContext(), tt.cmd)
 
 			if tt.wantErr {
 				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, composer)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &tt.composer, composer)
+				require.Equal(t, tt.composer, composer)
 			}
 		})
 	}
@@ -179,19 +232,73 @@ func TestComposerService_Create(t *testing.T) {
 func TestComposerService_Update(t *testing.T) {
 	tests := []struct {
 		name     string
-		composer content.Composer
+		cmd      model.UpsertComposerCommand
+		composer *content.Composer
 		err      error
 		wantErr  bool
 	}{
-		{"composer.update success", content.Composer{
-			FullName:  "Foo",
-			ShortName: "Bar",
-		}, nil, false},
-		{"composer.update rejected", content.Composer{}, content.ErrInvalidResource, true},
-		{"composer.update error", content.Composer{
-			FullName:  "Foo",
-			ShortName: "Bar",
-		}, errors.New("oops"), true},
+		{
+			"operation mismatch",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationCreate,
+					Data: content.Composer{
+						FullName:  "Foo Bar",
+						ShortName: "Bar",
+					},
+				},
+			},
+			nil,
+			content.ErrOperationMismatch,
+			true,
+		},
+		{
+			"invalid input composer",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationUpdate,
+					Data:      content.Composer{},
+				},
+			},
+			nil,
+			content.ErrInvalidResource,
+			true,
+		},
+		{
+			"store error",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Composer{
+						FullName:  "Foo Bar",
+						ShortName: "Bar",
+					},
+				},
+			},
+			nil,
+			ErrFoo,
+			true,
+		},
+		{
+			"success",
+			model.UpsertComposerCommand{
+				Composer: model.ComposerIntent{
+					Operation: model.OperationUpdate,
+					Data: content.Composer{
+						ID:        1,
+						FullName:  "Foo Bar",
+						ShortName: "Bar",
+					},
+				},
+			},
+			&content.Composer{
+				ID:        1,
+				FullName:  "Foo Bar",
+				ShortName: "Bar",
+			},
+			nil,
+			false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -201,20 +308,20 @@ func TestComposerService_Update(t *testing.T) {
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
 					return mockComposerStore{
-						composer: &tt.composer,
+						composer: tt.composer,
 						err:      tt.err,
 					}
 				},
 			}
 
-			composer, err := svc.Update(testContext(), tt.composer)
+			composer, err := svc.Update(testContext(), tt.cmd)
 
 			if tt.wantErr {
 				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, composer)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &tt.composer, composer)
+				require.Equal(t, tt.composer, composer)
 			}
 		})
 	}

@@ -103,7 +103,7 @@ func (s *ComposerService) List(
 // newly created Composer. Otherwise it returns an error.
 func (s *ComposerService) Create(
 	ctx context.Context,
-	c content.Composer,
+	cmd model.UpsertComposerCommand,
 ) (*content.Composer, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "composer.create"),
@@ -113,7 +113,16 @@ func (s *ComposerService) Create(
 		"create composer",
 	)
 
-	if err := c.Validate(); err != nil {
+	if cmd.Composer.Operation != model.OperationCreate {
+		logger.Warn(
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
+	if err := cmd.Composer.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate composer rejected",
 			slog.String("reason", reason(err)),
@@ -124,7 +133,7 @@ func (s *ComposerService) Create(
 
 	composerStore := s.newComposerStore(s.db)
 
-	composer, err := composerStore.Create(ctx, c)
+	composer, err := composerStore.Create(ctx, cmd.Composer.Data)
 	if err != nil {
 		logger.Error(
 			"create composer failed",
@@ -146,18 +155,27 @@ func (s *ComposerService) Create(
 // Composer. Otherwise it returns an error.
 func (s *ComposerService) Update(
 	ctx context.Context,
-	c content.Composer,
+	cmd model.UpsertComposerCommand,
 ) (*content.Composer, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "composer.update"),
-		slog.Int("composer_id", c.ID),
+		slog.Int("composer_id", cmd.Composer.Data.ID),
 	)
 
 	logger.Info(
 		"update composer",
 	)
 
-	if err := c.Validate(); err != nil {
+	if cmd.Composer.Operation != model.OperationUpdate {
+		logger.Warn(
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
+	if err := cmd.Composer.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate composer rejected",
 			slog.String("reason", reason(err)),
@@ -168,7 +186,7 @@ func (s *ComposerService) Update(
 
 	composerStore := s.newComposerStore(s.db)
 
-	composer, err := composerStore.Update(ctx, c)
+	composer, err := composerStore.Update(ctx, cmd.Composer.Data)
 	if err != nil {
 		logger.Error(
 			"update composer failed",

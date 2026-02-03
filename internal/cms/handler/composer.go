@@ -34,23 +34,50 @@ func (h *ComposerHandler) Register(mux *http.ServeMux) {
 }
 
 type composerRequest struct {
+	Operation model.Operation `json:"operation"`
+	ID        *int            `json:"id"`
+	Data      *composerData   `json:"data"`
+}
+
+func (r composerRequest) Validate() error {
+	if err := r.Operation.Validate(); err != nil {
+		return err
+	}
+
+	if r.Data == nil {
+		return model.ErrMissingData
+	}
+
+	return nil
+}
+
+func (r composerRequest) toCommand() model.UpsertComposerCommand {
+	composerIntent := model.ComposerIntent{
+		Operation: r.Operation,
+		Data:      r.Data.toDomain(r.ID),
+	}
+
+	return model.UpsertComposerCommand{
+		Composer: composerIntent,
+	}
+}
+
+type composerData struct {
 	FullName  string `json:"full_name"`
 	ShortName string `json:"short_name"`
 }
 
-func (r *composerRequest) toDomain() content.Composer {
-	return content.Composer{
-		FullName:  r.FullName,
-		ShortName: r.ShortName,
+func (d composerData) toDomain(id *int) content.Composer {
+	composer := content.Composer{
+		FullName:  d.FullName,
+		ShortName: d.ShortName,
 	}
-}
 
-func (r *composerRequest) toDomainWithID(id int) content.Composer {
-	return content.Composer{
-		ID:        id,
-		FullName:  r.FullName,
-		ShortName: r.ShortName,
+	if id != nil {
+		composer.ID = *id
 	}
+
+	return composer
 }
 
 type composerResponse struct {
@@ -142,7 +169,15 @@ func (h *ComposerHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	composer, err := h.composerService.Create(r.Context(), req.toDomain())
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	composer, err := h.composerService.Create(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
@@ -177,7 +212,17 @@ func (h *ComposerHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	composer, err := h.composerService.Update(r.Context(), req.toDomainWithID(id))
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	req.ID = &id
+
+	composer, err := h.composerService.Update(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
