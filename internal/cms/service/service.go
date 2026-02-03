@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/adamkadda/arman/internal/cms/model"
 	"github.com/adamkadda/arman/internal/content"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -110,6 +111,7 @@ type DB interface {
 var reasons = map[error]string{
 	// General
 	content.ErrOperationMismatch: "operation_mismatch",
+	model.ErrInvalidOperation:    "invalid_operation",
 
 	// Composer
 	content.ErrComposerFullNameEmpty:  "composer_full_name_empty",

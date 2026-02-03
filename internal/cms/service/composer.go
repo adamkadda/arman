@@ -24,7 +24,7 @@ func NewComposerService(db DB) *ComposerService {
 	return &ComposerService{
 		db: db,
 		newComposerStore: func(db store.Executor) ComposerStore {
-			return store.NewComposerStore(db)
+			return store.NewPostgresComposerStore(db)
 		},
 	}
 }
@@ -248,6 +248,78 @@ func (s *ComposerService) Delete(
 		)
 
 		return err
+	}
+
+	return nil
+}
+
+type composerResolver struct {
+	composerStore ComposerStore
+}
+
+func newComposerResolver(
+	composerStore ComposerStore,
+) *composerResolver {
+	return &composerResolver{
+		composerStore: composerStore,
+	}
+}
+
+func (r *composerResolver) run(
+	ctx context.Context,
+	intent model.ComposerIntent,
+) error {
+	logger := logging.FromContext(ctx)
+
+	switch intent.Operation {
+	case model.OperationSelect:
+	case model.OperationCreate:
+		if err := intent.Data.Validate(); err != nil {
+			logger.Warn(
+				"validate composer rejected",
+				slog.String("reason", reason(err)),
+			)
+
+			return fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+		}
+
+		_, err := r.composerStore.Create(ctx, intent.Data)
+		if err != nil {
+			logger.Error(
+				"create composer failed",
+				slog.String("step", "composer.create"),
+				slog.Any("error", err),
+			)
+
+			return err
+		}
+	case model.OperationUpdate:
+		if err := intent.Data.Validate(); err != nil {
+			logger.Warn(
+				"validate composer rejected",
+				slog.String("reason", reason(err)),
+			)
+
+			return fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+		}
+
+		_, err := r.composerStore.Update(ctx, intent.Data)
+		if err != nil {
+			logger.Error(
+				"update composer failed",
+				slog.Int("composer_id", intent.Data.ID),
+				slog.String("step", "composer.update"),
+				slog.Any("error", err),
+			)
+
+			return err
+		}
+	default:
+		logger.Warn(
+			"invalid composer operation",
+			slog.String("reason", reason(model.ErrInvalidOperation)),
+		)
+		return model.ErrInvalidOperation
 	}
 
 	return nil

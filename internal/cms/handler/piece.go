@@ -32,23 +32,55 @@ func (h *PieceHandler) Register(mux *http.ServeMux) {
 }
 
 type pieceRequest struct {
-	Title      string `json:"piece_title"`
-	ComposerID int    `json:"composer_id"`
+	Operation model.Operation `json:"operation"`
+	ID        *int            `json:"id"`
+	Data      *pieceData      `json:"data"`
 }
 
-func (r *pieceRequest) toDomain() content.Piece {
-	return content.Piece{
-		Title:      r.Title,
-		ComposerID: r.ComposerID,
+func (r pieceRequest) Validate() error {
+	if err := r.Operation.Validate(); err != nil {
+		return err
+	}
+
+	if r.Data == nil {
+		return model.ErrMissingData
+	}
+
+	return nil
+}
+
+func (r pieceRequest) toCommand() model.UpsertPieceCommand {
+	pieceIntent := model.PieceIntent{
+		Operation: r.Operation,
+		Data:      r.Data.toDomain(r.ID),
+	}
+
+	composerIntent := model.ComposerIntent{
+		Operation: r.Data.Composer.Operation,
+		Data:      r.Data.Composer.Data.toDomain(r.Data.Composer.ID),
+	}
+
+	return model.UpsertPieceCommand{
+		Piece:    pieceIntent,
+		Composer: composerIntent,
 	}
 }
 
-func (r *pieceRequest) toDomainWithID(id int) content.Piece {
-	return content.Piece{
-		ID:         id,
-		Title:      r.Title,
-		ComposerID: r.ComposerID,
+type pieceData struct {
+	Title    string          `json:"title"`
+	Composer composerRequest `json:"composer"`
+}
+
+func (d pieceData) toDomain(id *int) content.Piece {
+	piece := content.Piece{
+		Title: d.Title,
 	}
+
+	if id != nil {
+		piece.ID = *id
+	}
+
+	return piece
 }
 
 type pieceResponse struct {
@@ -140,7 +172,15 @@ func (h *PieceHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	piece, err := h.pieceService.Create(r.Context(), req.toDomain())
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	piece, err := h.pieceService.Create(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
@@ -175,7 +215,17 @@ func (h *PieceHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	piece, err := h.pieceService.Update(r.Context(), req.toDomainWithID(id))
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	req.ID = &id
+
+	piece, err := h.pieceService.Update(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,

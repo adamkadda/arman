@@ -12,15 +12,19 @@ import (
 )
 
 type PieceService struct {
-	db            DB
-	newPieceStore func(db store.Executor) PieceStore
+	db               DB
+	newPieceStore    func(db store.Executor) PieceStore
+	newComposerStore func(db store.Executor) ComposerStore
 }
 
 func NewPieceService(db DB) *PieceService {
 	return &PieceService{
 		db: db,
 		newPieceStore: func(db store.Executor) PieceStore {
-			return store.NewPieceStore(db)
+			return store.NewPostgresPieceStore(db)
+		},
+		newComposerStore: func(db store.Executor) ComposerStore {
+			return store.NewPostgresComposerStore(db)
 		},
 	}
 }
@@ -99,7 +103,7 @@ func (s *PieceService) List(
 // newly created Piece. Otherwise it returns an error.
 func (s *PieceService) Create(
 	ctx context.Context,
-	p content.Piece,
+	cmd model.UpsertPieceCommand,
 ) (*content.Piece, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "piece.create"),
@@ -109,9 +113,28 @@ func (s *PieceService) Create(
 		"create piece",
 	)
 
-	pieceStore := s.newPieceStore(s.db)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		logger.Error(
+			"begin transaction failed",
+			slog.String("step", "tx.begin"),
+			slog.Any("error", err),
+		)
 
-	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if cmd.Piece.Operation != model.OperationCreate {
+		logger.Warn(
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
+	if err := cmd.Piece.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate piece rejected",
 			slog.String("reason", reason(err)),
@@ -120,11 +143,32 @@ func (s *PieceService) Create(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	piece, err := pieceStore.Create(ctx, p)
+	composerResolver := newComposerResolver(
+		s.newComposerStore(tx),
+	)
+
+	err = composerResolver.run(logging.WithLogger(ctx, logger), cmd.Composer)
+	if err != nil {
+		return nil, err
+	}
+
+	pieceStore := s.newPieceStore(tx)
+
+	piece, err := pieceStore.Create(ctx, cmd.Piece.Data)
 	if err != nil {
 		logger.Error(
 			"create piece failed",
 			slog.String("step", "piece.create"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error(
+			"commit transaction failed",
+			slog.String("step", "tx.commit"),
 			slog.Any("error", err),
 		)
 
@@ -142,20 +186,30 @@ func (s *PieceService) Create(
 // Piece. Otherwise it returns an error.
 func (s *PieceService) Update(
 	ctx context.Context,
-	p content.Piece,
+	cmd model.UpsertPieceCommand,
 ) (*content.Piece, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "piece.update"),
-		slog.Int("piece_id", p.ID),
+		slog.Int("piece_id", cmd.Piece.Data.ID),
 	)
 
 	logger.Info(
 		"update piece",
 	)
 
-	pieceStore := s.newPieceStore(s.db)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		logger.Error(
+			"begin transaction failed",
+			slog.String("step", "tx.begin"),
+			slog.Any("error", err),
+		)
 
-	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if err := cmd.Composer.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate piece rejected",
 			slog.String("reason", reason(err)),
@@ -164,11 +218,32 @@ func (s *PieceService) Update(
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	piece, err := pieceStore.Update(ctx, p)
+	composerResolver := newComposerResolver(
+		s.newComposerStore(tx),
+	)
+
+	err = composerResolver.run(logging.WithLogger(ctx, logger), cmd.Composer)
+	if err != nil {
+		return nil, err
+	}
+
+	pieceStore := s.newPieceStore(tx)
+
+	piece, err := pieceStore.Update(ctx, cmd.Piece.Data)
 	if err != nil {
 		logger.Error(
 			"update piece failed",
 			slog.String("step", "piece.update"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error(
+			"commit transaction failed",
+			slog.String("step", "tx.commit"),
 			slog.Any("error", err),
 		)
 

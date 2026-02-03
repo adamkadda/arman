@@ -150,14 +150,158 @@ func TestPieceService_List(t *testing.T) {
 
 func TestPieceService_Create(t *testing.T) {
 	tests := []struct {
-		name    string
-		piece   content.Piece
-		err     error
-		wantErr bool
+		name             string
+		cmd              model.UpsertPieceCommand
+		piece            *content.Piece
+		beginErr         error
+		commitErr        error
+		pieceStoreErr    error
+		composerStoreErr error
+		expectedErr      error
 	}{
-		{"piece.create success", content.Piece{Title: "foo"}, nil, false},
-		{"piece.create rejected", content.Piece{}, content.ErrInvalidResource, true},
-		{"piece.create error", content.Piece{Title: "foo"}, errors.New("oops"), true},
+		{
+			"begin tx failed",
+			model.UpsertPieceCommand{},
+			nil,
+			ErrTxBegin,
+			nil,
+			nil,
+			nil,
+			ErrTxBegin,
+		},
+		{
+			"operation mismatch",
+			model.UpsertPieceCommand{
+				Piece: model.PieceIntent{
+					Operation: model.OperationUpdate,
+				},
+				Composer: model.ComposerIntent{},
+			},
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			content.ErrOperationMismatch,
+		},
+		{
+			"invalid piece",
+			model.UpsertPieceCommand{
+				Piece: model.PieceIntent{
+					Operation: model.OperationCreate,
+					Data: content.Piece{
+						ComposerID: 1,
+					},
+				},
+				Composer: model.ComposerIntent{},
+			},
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			content.ErrInvalidResource,
+		},
+		{
+			"composer resolver err",
+			model.UpsertPieceCommand{
+				Piece: model.PieceIntent{
+					Operation: model.OperationCreate,
+					Data: content.Piece{
+						Title:      "Foo",
+						ComposerID: 1,
+					},
+				},
+				Composer: model.ComposerIntent{
+					Operation: model.OperationSelect,
+					Data: content.Composer{
+						ID: 1,
+					},
+				},
+			},
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"store error",
+			model.UpsertPieceCommand{
+				Piece: model.PieceIntent{
+					Operation: model.OperationCreate,
+					Data: content.Piece{
+						Title:      "Foo",
+						ComposerID: 1,
+					},
+				},
+				Composer: model.ComposerIntent{
+					Operation: model.OperationSelect,
+					Data: content.Composer{
+						ID: 1,
+					},
+				},
+			},
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"commit tx failed",
+			model.UpsertPieceCommand{
+				Piece: model.PieceIntent{
+					Operation: model.OperationCreate,
+					Data: content.Piece{
+						Title:      "Foo",
+						ComposerID: 1,
+					},
+				},
+				Composer: model.ComposerIntent{
+					Operation: model.OperationSelect,
+					Data: content.Composer{
+						ID: 1,
+					},
+				},
+			},
+			nil,
+			nil,
+			ErrTxCommit,
+			nil,
+			nil,
+			ErrTxCommit,
+		},
+		{
+			"success",
+			model.UpsertPieceCommand{
+				Piece: model.PieceIntent{
+					Operation: model.OperationCreate,
+					Data: content.Piece{
+						Title:      "Foo",
+						ComposerID: 1,
+					},
+				},
+				Composer: model.ComposerIntent{
+					Operation: model.OperationSelect,
+					Data: content.Composer{
+						ID: 1,
+					},
+				},
+			},
+			&content.Piece{
+				ID:         1,
+				Title:      "Foo",
+				ComposerID: 1,
+			},
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -165,22 +309,33 @@ func TestPieceService_Create(t *testing.T) {
 			t.Parallel()
 
 			svc := PieceService{
+				db: mockDB{
+					tx: mockTx{
+						err: tt.commitErr,
+					},
+					err: tt.beginErr,
+				},
 				newPieceStore: func(db store.Executor) PieceStore {
 					return mockPieceStore{
-						piece: &tt.piece,
-						err:   tt.err,
+						piece: tt.piece,
+						err:   tt.pieceStoreErr,
+					}
+				},
+				newComposerStore: func(db store.Executor) ComposerStore {
+					return mockComposerStore{
+						composer: &tt.cmd.Composer.Data,
+						err:      tt.composerStoreErr,
 					}
 				},
 			}
 
-			piece, err := svc.Create(testContext(), tt.piece)
+			piece, err := svc.Create(testContext(), tt.cmd)
 
-			if tt.wantErr {
-				require.ErrorIs(t, err, tt.err)
-				require.Nil(t, piece)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &tt.piece, piece)
+				require.Equal(t, tt.piece, piece)
 			}
 		})
 	}
@@ -189,14 +344,11 @@ func TestPieceService_Create(t *testing.T) {
 func TestPieceService_Update(t *testing.T) {
 	tests := []struct {
 		name    string
-		piece   content.Piece
+		cmd     model.UpsertPieceCommand
+		piece   *content.Piece
 		err     error
 		wantErr bool
-	}{
-		{"piece.update success", content.Piece{Title: "foo"}, nil, false},
-		{"piece.update rejected", content.Piece{}, content.ErrInvalidResource, true},
-		{"piece.update error", content.Piece{Title: "foo"}, errors.New("oops"), true},
-	}
+	}{}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -205,20 +357,20 @@ func TestPieceService_Update(t *testing.T) {
 			svc := PieceService{
 				newPieceStore: func(db store.Executor) PieceStore {
 					return mockPieceStore{
-						piece: &tt.piece,
+						piece: tt.piece,
 						err:   tt.err,
 					}
 				},
 			}
 
-			piece, err := svc.Update(testContext(), tt.piece)
+			piece, err := svc.Update(testContext(), tt.cmd)
 
 			if tt.wantErr {
 				require.ErrorIs(t, err, tt.err)
 				require.Nil(t, piece)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, &tt.piece, piece)
+				require.Equal(t, tt.piece, piece)
 			}
 		})
 	}

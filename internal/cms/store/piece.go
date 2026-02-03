@@ -8,12 +8,12 @@ import (
 	"github.com/adamkadda/arman/internal/content"
 )
 
-type PieceStore struct {
+type PostgresPieceStore struct {
 	db Executor
 }
 
-func NewPieceStore(db Executor) *PieceStore {
-	return &PieceStore{
+func NewPostgresPieceStore(db Executor) *PostgresPieceStore {
+	return &PostgresPieceStore{
 		db: db,
 	}
 }
@@ -40,7 +40,7 @@ func (r *pieceRow) toPieceWithDetails() model.PieceWithDetails {
 	}
 }
 
-func (s *PieceStore) Get(
+func (s *PostgresPieceStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Piece, error) {
@@ -68,7 +68,7 @@ func (s *PieceStore) Get(
 	return &piece, nil
 }
 
-func (s *PieceStore) GetWithDetails(
+func (s *PostgresPieceStore) GetWithDetails(
 	ctx context.Context,
 	id int,
 ) (*model.PieceWithDetails, error) {
@@ -103,7 +103,7 @@ func (s *PieceStore) GetWithDetails(
 	return &piece, nil
 }
 
-func (s *PieceStore) ListWithDetails(
+func (s *PostgresPieceStore) ListWithDetails(
 	ctx context.Context,
 ) ([]model.PieceWithDetails, error) {
 	query := `
@@ -139,7 +139,7 @@ func (s *PieceStore) ListWithDetails(
 	return pieces, nil
 }
 
-func (s *PieceStore) Create(
+func (s *PostgresPieceStore) Create(
 	ctx context.Context,
 	p content.Piece,
 ) (*content.Piece, error) {
@@ -173,7 +173,7 @@ func (s *PieceStore) Create(
 	return &piece, nil
 }
 
-func (s *PieceStore) Update(
+func (s *PostgresPieceStore) Update(
 	ctx context.Context,
 	p content.Piece,
 ) (*content.Piece, error) {
@@ -208,7 +208,7 @@ func (s *PieceStore) Update(
 	return &piece, nil
 }
 
-func (s *PieceStore) Delete(
+func (s *PostgresPieceStore) Delete(
 	ctx context.Context,
 	id int,
 ) error {

@@ -8,12 +8,12 @@ import (
 	"github.com/adamkadda/arman/internal/content"
 )
 
-type ComposerStore struct {
+type PostgresComposerStore struct {
 	db Executor
 }
 
-func NewComposerStore(db Executor) *ComposerStore {
-	return &ComposerStore{
+func NewPostgresComposerStore(db Executor) *PostgresComposerStore {
+	return &PostgresComposerStore{
 		db: db,
 	}
 }
@@ -40,7 +40,7 @@ func (r *composerRow) toComposerWithDetails() model.ComposerWithDetails {
 	}
 }
 
-func (s *ComposerStore) Get(
+func (s *PostgresComposerStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Composer, error) {
@@ -68,7 +68,7 @@ func (s *ComposerStore) Get(
 	return &composer, nil
 }
 
-func (s *ComposerStore) GetWithDetails(
+func (s *PostgresComposerStore) GetWithDetails(
 	ctx context.Context,
 	id int,
 ) (*model.ComposerWithDetails, error) {
@@ -103,7 +103,7 @@ func (s *ComposerStore) GetWithDetails(
 	return &composer, nil
 }
 
-func (s *ComposerStore) ListWithDetails(
+func (s *PostgresComposerStore) ListWithDetails(
 	ctx context.Context,
 ) ([]model.ComposerWithDetails, error) {
 	query := `
@@ -139,7 +139,7 @@ func (s *ComposerStore) ListWithDetails(
 	return composers, nil
 }
 
-func (s *ComposerStore) Create(
+func (s *PostgresComposerStore) Create(
 	ctx context.Context,
 	c content.Composer,
 ) (*content.Composer, error) {
@@ -173,7 +173,7 @@ func (s *ComposerStore) Create(
 	return &composer, nil
 }
 
-func (s *ComposerStore) Update(
+func (s *PostgresComposerStore) Update(
 	ctx context.Context,
 	c content.Composer,
 ) (*content.Composer, error) {
@@ -207,7 +207,7 @@ func (s *ComposerStore) Update(
 	return &composer, nil
 }
 
-func (s *ComposerStore) Delete(
+func (s *PostgresComposerStore) Delete(
 	ctx context.Context,
 	id int,
 ) error {
