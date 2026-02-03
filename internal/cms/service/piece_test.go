@@ -447,3 +447,75 @@ func TestPieceService_Delete(t *testing.T) {
 		})
 	}
 }
+
+func TestPieceResolver_Run(t *testing.T) {
+	tests := []struct {
+		name        string
+		intent      model.PieceIntent
+		expectedErr error
+	}{
+		{
+			"select success",
+			model.PieceIntent{
+				Operation: model.OperationSelect,
+				Data: content.Piece{
+					ID:         1,
+					Title:      "Foo",
+					ComposerID: 1,
+				},
+			},
+			nil,
+		},
+		{
+			"create success",
+			model.PieceIntent{
+				Operation: model.OperationCreate,
+				Data: content.Piece{
+					Title:      "Foo",
+					ComposerID: 1,
+				},
+			},
+			nil,
+		},
+		{
+			"update success",
+			model.PieceIntent{
+				Operation: model.OperationUpdate,
+				Data: content.Piece{
+					ID:         1,
+					Title:      "Foo",
+					ComposerID: 1,
+				},
+			},
+			nil,
+		},
+		{
+			"invalid operation",
+			model.PieceIntent{
+				Operation: model.Operation("DELETE"),
+				Data: content.Piece{
+					ID:         1,
+					Title:      "Foo",
+					ComposerID: 1,
+				},
+			},
+			model.ErrInvalidOperation,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resolver := newPieceResolver(mockPieceStore{})
+
+			_, err := resolver.run(testContext(), tt.intent)
+
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

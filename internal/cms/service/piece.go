@@ -306,3 +306,85 @@ func (s *PieceService) Delete(
 
 	return nil
 }
+
+type pieceResolver struct {
+	pieceStore PieceStore
+}
+
+func newPieceResolver(
+	pieceStore PieceStore,
+) *pieceResolver {
+	return &pieceResolver{
+		pieceStore: pieceStore,
+	}
+}
+
+func (r *pieceResolver) run(
+	ctx context.Context,
+	intent model.PieceIntent,
+) (*content.Piece, error) {
+	logger := logging.FromContext(ctx)
+
+	switch intent.Operation {
+	case model.OperationSelect:
+		piece, err := r.pieceStore.Get(ctx, intent.Data.ID)
+		if err != nil {
+			logger.Error(
+				"get piece failed",
+				slog.Int("piece_id", intent.Data.ID),
+				slog.String("step", "piece.get"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
+	case model.OperationCreate:
+		if err := intent.Data.Validate(); err != nil {
+			logger.Warn(
+				"validate piece rejected",
+				slog.String("reason", reason(err)),
+			)
+			return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+		}
+
+		piece, err := r.pieceStore.Create(ctx, intent.Data)
+		if err != nil {
+			logger.Error(
+				"create piece failed",
+				slog.String("step", "piece.create"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
+	case model.OperationUpdate:
+		if err := intent.Data.Validate(); err != nil {
+			logger.Warn(
+				"validate piece rejected",
+				slog.String("reason", reason(err)),
+			)
+			return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+		}
+
+		piece, err := r.pieceStore.Update(ctx, intent.Data)
+		if err != nil {
+			logger.Error(
+				"update piece failed",
+				slog.Int("piece_id", intent.Data.ID),
+				slog.String("step", "piece.update"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
+	default:
+		logger.Warn(
+			"invalid piece operation",
+			slog.String("reason", reason(model.ErrInvalidOperation)),
+		)
+		return nil, model.ErrInvalidOperation
+	}
+}
