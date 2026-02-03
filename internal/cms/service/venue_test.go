@@ -410,3 +410,76 @@ func TestVenueService_Delete(t *testing.T) {
 		})
 	}
 }
+
+func TestVenueResolver_Run(t *testing.T) {
+	tests := []struct {
+		name   string
+		intent model.VenueIntent
+		err    error
+	}{
+		{
+			"select success",
+			model.VenueIntent{
+				Operation: model.OperationSelect,
+				Data: content.Venue{
+					ID:           1,
+					Name:         "Foo Hall",
+					FullAddress:  "22 Foo St. Bar City",
+					ShortAddress: "22 Foo St.",
+				},
+			},
+			nil,
+		},
+		{
+			"create success",
+			model.VenueIntent{
+				Operation: model.OperationCreate,
+				Data: content.Venue{
+					Name:         "Foo Hall",
+					FullAddress:  "22 Foo St. Bar City",
+					ShortAddress: "22 Foo St.",
+				},
+			},
+			nil,
+		},
+		{
+			"update success",
+			model.VenueIntent{
+				Operation: model.OperationUpdate,
+				Data: content.Venue{
+					ID:           1,
+					Name:         "Foo Hall",
+					FullAddress:  "22 Foo St. Bar City",
+					ShortAddress: "22 Foo St.",
+				},
+			},
+			nil,
+		},
+		{
+			"invalid operation",
+			model.VenueIntent{
+				Operation: model.Operation("DELETE"),
+				Data: content.Venue{
+					ID: 1,
+				},
+			},
+			model.ErrInvalidOperation,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resolver := newVenueResolver(mockVenueStore{})
+
+			_, err := resolver.run(testContext(), tt.intent)
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

@@ -58,7 +58,7 @@ func (s *VenueService) Get(
 	venue, err := venueStore.Get(ctx, id)
 	if err != nil {
 		logger.Error(
-			"get composer failed",
+			"get venue failed",
 			slog.String("step", "venue.get"),
 			slog.Any("error", err),
 		)
@@ -257,4 +257,85 @@ func (s *VenueService) Delete(
 	}
 
 	return nil
+}
+
+type venueResolver struct {
+	venueStore VenueStore
+}
+
+func newVenueResolver(
+	venueStore VenueStore,
+) *venueResolver {
+	return &venueResolver{
+		venueStore: venueStore,
+	}
+}
+
+func (r *venueResolver) run(
+	ctx context.Context,
+	intent model.VenueIntent,
+) (*content.Venue, error) {
+	logger := logging.FromContext(ctx)
+
+	switch intent.Operation {
+	case model.OperationSelect:
+		piece, err := r.venueStore.Get(ctx, intent.Data.ID)
+		if err != nil {
+			logger.Error(
+				"get venue failed",
+				slog.String("step", "venue.get"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
+	case model.OperationCreate:
+		if err := intent.Data.Validate(); err != nil {
+			logger.Warn(
+				"validate venue rejected",
+				slog.String("reason", reason(err)),
+			)
+			return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+		}
+
+		piece, err := r.venueStore.Create(ctx, intent.Data)
+		if err != nil {
+			logger.Error(
+				"create venue failed",
+				slog.String("step", "venue.create"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
+	case model.OperationUpdate:
+		if err := intent.Data.Validate(); err != nil {
+			logger.Warn(
+				"validate venue rejected",
+				slog.String("reason", reason(err)),
+			)
+			return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+		}
+
+		piece, err := r.venueStore.Update(ctx, intent.Data)
+		if err != nil {
+			logger.Error(
+				"update venue failed",
+				slog.Int("venue_id", intent.Data.ID),
+				slog.String("step", "venue.update"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
+	default:
+		logger.Warn(
+			"invalid venue operation",
+			slog.String("reason", reason(model.ErrInvalidOperation)),
+		)
+		return nil, model.ErrInvalidOperation
+	}
 }
