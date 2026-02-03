@@ -410,6 +410,7 @@ func TestComposerResolver_Run(t *testing.T) {
 			model.ComposerIntent{
 				Operation: model.OperationSelect,
 				Data: content.Composer{
+					ID:        1,
 					FullName:  "Foo Bar Baz",
 					ShortName: "Baz",
 				},
@@ -432,6 +433,7 @@ func TestComposerResolver_Run(t *testing.T) {
 			model.ComposerIntent{
 				Operation: model.OperationUpdate,
 				Data: content.Composer{
+					ID:        1,
 					FullName:  "Foo Bar Baz",
 					ShortName: "Baz",
 				},
@@ -443,6 +445,7 @@ func TestComposerResolver_Run(t *testing.T) {
 			model.ComposerIntent{
 				Operation: model.Operation("DELETE"),
 				Data: content.Composer{
+					ID:        1,
 					FullName:  "Foo Bar Baz",
 					ShortName: "Baz",
 				},
@@ -457,7 +460,7 @@ func TestComposerResolver_Run(t *testing.T) {
 
 			resolver := newComposerResolver(mockComposerStore{})
 
-			err := resolver.run(testContext(), tt.intent)
+			_, err := resolver.run(testContext(), tt.intent)
 
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)

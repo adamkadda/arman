@@ -268,42 +268,52 @@ func newComposerResolver(
 func (r *composerResolver) run(
 	ctx context.Context,
 	intent model.ComposerIntent,
-) error {
+) (*content.Composer, error) {
 	logger := logging.FromContext(ctx)
 
 	switch intent.Operation {
 	case model.OperationSelect:
+		piece, err := r.composerStore.Get(ctx, intent.Data.ID)
+		if err != nil {
+			logger.Error(
+				"get composer failed",
+				slog.String("step", "composer.get"),
+				slog.Any("error", err),
+			)
+			return nil, err
+		}
+		return piece, nil
+
 	case model.OperationCreate:
 		if err := intent.Data.Validate(); err != nil {
 			logger.Warn(
 				"validate composer rejected",
 				slog.String("reason", reason(err)),
 			)
-
-			return fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+			return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 		}
 
-		_, err := r.composerStore.Create(ctx, intent.Data)
+		piece, err := r.composerStore.Create(ctx, intent.Data)
 		if err != nil {
 			logger.Error(
 				"create composer failed",
 				slog.String("step", "composer.create"),
 				slog.Any("error", err),
 			)
-
-			return err
+			return nil, err
 		}
+		return piece, nil
+
 	case model.OperationUpdate:
 		if err := intent.Data.Validate(); err != nil {
 			logger.Warn(
 				"validate composer rejected",
 				slog.String("reason", reason(err)),
 			)
-
-			return fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
+			return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 		}
 
-		_, err := r.composerStore.Update(ctx, intent.Data)
+		piece, err := r.composerStore.Update(ctx, intent.Data)
 		if err != nil {
 			logger.Error(
 				"update composer failed",
@@ -311,16 +321,15 @@ func (r *composerResolver) run(
 				slog.String("step", "composer.update"),
 				slog.Any("error", err),
 			)
-
-			return err
+			return nil, err
 		}
+		return piece, nil
+
 	default:
 		logger.Warn(
 			"invalid composer operation",
 			slog.String("reason", reason(model.ErrInvalidOperation)),
 		)
-		return model.ErrInvalidOperation
+		return nil, model.ErrInvalidOperation
 	}
-
-	return nil
 }

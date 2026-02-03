@@ -147,10 +147,15 @@ func (s *PieceService) Create(
 		s.newComposerStore(tx),
 	)
 
-	err = composerResolver.run(logging.WithLogger(ctx, logger), cmd.Composer)
+	composer, err := composerResolver.run(
+		logging.WithLogger(ctx, logger),
+		cmd.Composer,
+	)
 	if err != nil {
 		return nil, err
 	}
+
+	cmd.Piece.Data.ComposerID = composer.ID
 
 	pieceStore := s.newPieceStore(tx)
 
@@ -209,6 +214,15 @@ func (s *PieceService) Update(
 	}
 	defer tx.Rollback(ctx)
 
+	if cmd.Piece.Operation != model.OperationUpdate {
+		logger.Warn(
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
 	if err := cmd.Composer.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate piece rejected",
@@ -222,10 +236,15 @@ func (s *PieceService) Update(
 		s.newComposerStore(tx),
 	)
 
-	err = composerResolver.run(logging.WithLogger(ctx, logger), cmd.Composer)
+	composer, err := composerResolver.run(
+		logging.WithLogger(ctx, logger),
+		cmd.Composer,
+	)
 	if err != nil {
 		return nil, err
 	}
+
+	cmd.Piece.Data.ComposerID = composer.ID
 
 	pieceStore := s.newPieceStore(tx)
 
