@@ -398,3 +398,72 @@ func TestComposerService_Delete(t *testing.T) {
 		})
 	}
 }
+
+func TestComposerResolver_Run(t *testing.T) {
+	tests := []struct {
+		name        string
+		intent      model.ComposerIntent
+		expectedErr error
+	}{
+		{
+			"select success",
+			model.ComposerIntent{
+				Operation: model.OperationSelect,
+				Data: content.Composer{
+					FullName:  "Foo Bar Baz",
+					ShortName: "Baz",
+				},
+			},
+			nil,
+		},
+		{
+			"create success",
+			model.ComposerIntent{
+				Operation: model.OperationCreate,
+				Data: content.Composer{
+					FullName:  "Foo Bar Baz",
+					ShortName: "Baz",
+				},
+			},
+			nil,
+		},
+		{
+			"update success",
+			model.ComposerIntent{
+				Operation: model.OperationUpdate,
+				Data: content.Composer{
+					FullName:  "Foo Bar Baz",
+					ShortName: "Baz",
+				},
+			},
+			nil,
+		},
+		{
+			"invalid operation",
+			model.ComposerIntent{
+				Operation: model.Operation("DELETE"),
+				Data: content.Composer{
+					FullName:  "Foo Bar Baz",
+					ShortName: "Baz",
+				},
+			},
+			model.ErrInvalidOperation,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resolver := newComposerResolver(mockComposerStore{})
+
+			err := resolver.run(testContext(), tt.intent)
+
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
