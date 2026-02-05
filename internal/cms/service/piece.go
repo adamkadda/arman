@@ -223,7 +223,7 @@ func (s *PieceService) Update(
 		return nil, content.ErrOperationMismatch
 	}
 
-	if err := cmd.Composer.Data.Validate(); err != nil {
+	if err := cmd.Piece.Data.Validate(); err != nil {
 		logger.Warn(
 			"validate piece rejected",
 			slog.String("reason", reason(err)),
