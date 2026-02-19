@@ -51,13 +51,13 @@ func (r venueRequest) Validate() error {
 	return nil
 }
 
-func (r venueRequest) toCommand() model.UpsertVenueCommand {
+func (r venueRequest) toCommand() model.VenueCommand {
 	venueIntent := model.VenueIntent{
 		Operation: r.Operation,
 		Data:      r.Data.toDomain(r.ID),
 	}
 
-	return model.UpsertVenueCommand{
+	return model.VenueCommand{
 		Venue: venueIntent,
 	}
 }

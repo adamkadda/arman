@@ -103,7 +103,7 @@ func (s *ComposerService) List(
 // newly created Composer. Otherwise it returns an error.
 func (s *ComposerService) Create(
 	ctx context.Context,
-	cmd model.UpsertComposerCommand,
+	cmd model.ComposerCommand,
 ) (*content.Composer, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "composer.create"),
@@ -155,7 +155,7 @@ func (s *ComposerService) Create(
 // Composer. Otherwise it returns an error.
 func (s *ComposerService) Update(
 	ctx context.Context,
-	cmd model.UpsertComposerCommand,
+	cmd model.ComposerCommand,
 ) (*content.Composer, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "composer.update"),

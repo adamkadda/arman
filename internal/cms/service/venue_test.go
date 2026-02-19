@@ -132,14 +132,14 @@ func TestVenueService_List(t *testing.T) {
 func TestVenueService_Create(t *testing.T) {
 	tests := []struct {
 		name        string
-		cmd         model.UpsertVenueCommand
+		cmd         model.VenueCommand
 		venue       *content.Venue
 		storeErr    error
 		expectedErr error
 	}{
 		{
 			name: "operation mismatch",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Venue{
@@ -155,7 +155,7 @@ func TestVenueService_Create(t *testing.T) {
 		},
 		{
 			name: "invalid input venue",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationCreate,
 					Data:      content.Venue{},
@@ -167,7 +167,7 @@ func TestVenueService_Create(t *testing.T) {
 		},
 		{
 			name: "store error",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationCreate,
 					Data: content.Venue{
@@ -183,7 +183,7 @@ func TestVenueService_Create(t *testing.T) {
 		},
 		{
 			name: "success",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationCreate,
 					Data: content.Venue{
@@ -232,14 +232,14 @@ func TestVenueService_Create(t *testing.T) {
 func TestVenueService_Update(t *testing.T) {
 	tests := []struct {
 		name        string
-		cmd         model.UpsertVenueCommand
+		cmd         model.VenueCommand
 		venue       *content.Venue
 		storeErr    error
 		expectedErr error
 	}{
 		{
 			name: "operation mismatch",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationCreate,
 					Data: content.Venue{
@@ -256,7 +256,7 @@ func TestVenueService_Update(t *testing.T) {
 		},
 		{
 			name: "invalid input venue",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Venue{
@@ -270,7 +270,7 @@ func TestVenueService_Update(t *testing.T) {
 		},
 		{
 			name: "store error",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Venue{
@@ -287,7 +287,7 @@ func TestVenueService_Update(t *testing.T) {
 		},
 		{
 			name: "success",
-			cmd: model.UpsertVenueCommand{
+			cmd: model.VenueCommand{
 				Venue: model.VenueIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Venue{

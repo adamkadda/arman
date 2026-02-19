@@ -17,6 +17,7 @@ const (
 var (
 	ErrInvalidOperation = errors.New("invalid operation")
 	ErrMissingData      = errors.New("missing data")
+	ErrMissingTempID    = errors.New("missing temp id")
 )
 
 func (o Operation) Validate() error {

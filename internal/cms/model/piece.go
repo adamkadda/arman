@@ -2,7 +2,7 @@ package model
 
 import "github.com/adamkadda/arman/internal/content"
 
-type UpsertPieceCommand struct {
+type PieceCommand struct {
 	Piece    PieceIntent
 	Composer ComposerIntent
 }

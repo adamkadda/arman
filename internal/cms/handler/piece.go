@@ -49,7 +49,7 @@ func (r pieceRequest) Validate() error {
 	return nil
 }
 
-func (r pieceRequest) toCommand() model.UpsertPieceCommand {
+func (r pieceRequest) toCommand() model.PieceCommand {
 	pieceIntent := model.PieceIntent{
 		Operation: r.Operation,
 		Data:      r.Data.toDomain(r.ID),
@@ -60,7 +60,7 @@ func (r pieceRequest) toCommand() model.UpsertPieceCommand {
 		Data:      r.Data.Composer.Data.toDomain(r.Data.Composer.ID),
 	}
 
-	return model.UpsertPieceCommand{
+	return model.PieceCommand{
 		Piece:    pieceIntent,
 		Composer: composerIntent,
 	}

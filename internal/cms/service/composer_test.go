@@ -129,18 +129,22 @@ func TestComposerService_List(t *testing.T) {
 }
 
 func TestComposerService_Create(t *testing.T) {
+	tempID := new(int)
+	*tempID = 1
+
 	tests := []struct {
 		name             string
-		cmd              model.UpsertComposerCommand
+		cmd              model.ComposerCommand
 		expectedComposer *content.Composer
 		storeErr         error
 		expectedErr      error
 	}{
 		{
 			name: "operation mismatch",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationUpdate,
+					TempID:    tempID,
 					Data: content.Composer{
 						FullName:  "Foo Foolington",
 						ShortName: "Foolington",
@@ -153,12 +157,11 @@ func TestComposerService_Create(t *testing.T) {
 		},
 		{
 			name: "invalid input composer",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationCreate,
-					Data: content.Composer{
-						ID: 1,
-					},
+					TempID:    tempID,
+					Data:      content.Composer{},
 				},
 			},
 			expectedComposer: nil,
@@ -167,9 +170,10 @@ func TestComposerService_Create(t *testing.T) {
 		},
 		{
 			name: "store error",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationCreate,
+					TempID:    tempID,
 					Data: content.Composer{
 						FullName:  "Foo Foolington",
 						ShortName: "Foolington",
@@ -182,9 +186,10 @@ func TestComposerService_Create(t *testing.T) {
 		},
 		{
 			name: "success",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationCreate,
+					TempID:    tempID,
 					Data: content.Composer{
 						FullName:  "Foo Foolington",
 						ShortName: "Foolington",
@@ -229,14 +234,14 @@ func TestComposerService_Create(t *testing.T) {
 func TestComposerService_Update(t *testing.T) {
 	tests := []struct {
 		name             string
-		cmd              model.UpsertComposerCommand
+		cmd              model.ComposerCommand
 		expectedComposer *content.Composer
 		storeErr         error
 		expectedErr      error
 	}{
 		{
 			name: "operation mismatch",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationCreate,
 					Data: content.Composer{
@@ -252,7 +257,7 @@ func TestComposerService_Update(t *testing.T) {
 		},
 		{
 			name: "invalid input composer",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Composer{
@@ -266,7 +271,7 @@ func TestComposerService_Update(t *testing.T) {
 		},
 		{
 			name: "store error",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Composer{
@@ -282,7 +287,7 @@ func TestComposerService_Update(t *testing.T) {
 		},
 		{
 			name: "success",
-			cmd: model.UpsertComposerCommand{
+			cmd: model.ComposerCommand{
 				Composer: model.ComposerIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Composer{

@@ -104,7 +104,7 @@ func (s *VenueService) List(
 // newly created Venue. Otherwise it returns an error.
 func (s *VenueService) Create(
 	ctx context.Context,
-	cmd model.UpsertVenueCommand,
+	cmd model.VenueCommand,
 ) (*content.Venue, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "venue.create"),
@@ -156,7 +156,7 @@ func (s *VenueService) Create(
 // Venue. Otherwise it returns an error.
 func (s *VenueService) Update(
 	ctx context.Context,
-	cmd model.UpsertVenueCommand,
+	cmd model.VenueCommand,
 ) (*content.Venue, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "venue.update"),

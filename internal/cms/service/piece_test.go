@@ -128,7 +128,7 @@ func TestPieceService_List(t *testing.T) {
 func TestPieceService_Create(t *testing.T) {
 	tests := []struct {
 		name             string
-		cmd              model.UpsertPieceCommand
+		cmd              model.PieceCommand
 		expectedPiece    *content.Piece
 		beginErr         error
 		commitErr        error
@@ -138,7 +138,7 @@ func TestPieceService_Create(t *testing.T) {
 	}{
 		{
 			name:             "tx begin failed",
-			cmd:              model.UpsertPieceCommand{},
+			cmd:              model.PieceCommand{},
 			expectedPiece:    nil,
 			beginErr:         ErrTxBegin,
 			commitErr:        nil,
@@ -148,7 +148,7 @@ func TestPieceService_Create(t *testing.T) {
 		},
 		{
 			name: "operation mismatch",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Piece{
@@ -172,7 +172,7 @@ func TestPieceService_Create(t *testing.T) {
 		},
 		{
 			name: "piece validation failed",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationCreate,
 					Data: content.Piece{
@@ -195,7 +195,7 @@ func TestPieceService_Create(t *testing.T) {
 		},
 		{
 			name: "composer resolver error",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationCreate,
 					Data: content.Piece{
@@ -219,7 +219,7 @@ func TestPieceService_Create(t *testing.T) {
 		},
 		{
 			name: "piece store error",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationCreate,
 					Data: content.Piece{
@@ -243,7 +243,7 @@ func TestPieceService_Create(t *testing.T) {
 		},
 		{
 			name: "commit tx failed",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationCreate,
 					Data: content.Piece{
@@ -267,7 +267,7 @@ func TestPieceService_Create(t *testing.T) {
 		},
 		{
 			name: "success",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationCreate,
 					Data: content.Piece{
@@ -335,7 +335,7 @@ func TestPieceService_Create(t *testing.T) {
 func TestPieceService_Update(t *testing.T) {
 	tests := []struct {
 		name             string
-		cmd              model.UpsertPieceCommand
+		cmd              model.PieceCommand
 		expectedPiece    *content.Piece
 		beginErr         error
 		commitErr        error
@@ -345,7 +345,7 @@ func TestPieceService_Update(t *testing.T) {
 	}{
 		{
 			name:             "tx begin failed",
-			cmd:              model.UpsertPieceCommand{},
+			cmd:              model.PieceCommand{},
 			expectedPiece:    nil,
 			beginErr:         ErrTxBegin,
 			commitErr:        nil,
@@ -355,7 +355,7 @@ func TestPieceService_Update(t *testing.T) {
 		},
 		{
 			name: "operation mismatch",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationCreate,
 					Data: content.Piece{
@@ -380,7 +380,7 @@ func TestPieceService_Update(t *testing.T) {
 		},
 		{
 			name: "piece validation failed",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Piece{
@@ -403,7 +403,7 @@ func TestPieceService_Update(t *testing.T) {
 		},
 		{
 			name: "composer resolver error",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Piece{
@@ -428,7 +428,7 @@ func TestPieceService_Update(t *testing.T) {
 		},
 		{
 			name: "piece store error",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Piece{
@@ -453,7 +453,7 @@ func TestPieceService_Update(t *testing.T) {
 		},
 		{
 			name: "tx commit failed",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Piece{
@@ -478,7 +478,7 @@ func TestPieceService_Update(t *testing.T) {
 		},
 		{
 			name: "success",
-			cmd: model.UpsertPieceCommand{
+			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
 					Operation: model.OperationUpdate,
 					Data: content.Piece{

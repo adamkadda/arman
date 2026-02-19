@@ -2,7 +2,7 @@ package model
 
 import "github.com/adamkadda/arman/internal/content"
 
-type UpsertVenueCommand struct {
+type VenueCommand struct {
 	Venue VenueIntent
 }
 

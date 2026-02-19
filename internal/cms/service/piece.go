@@ -103,7 +103,7 @@ func (s *PieceService) List(
 // newly created Piece. Otherwise it returns an error.
 func (s *PieceService) Create(
 	ctx context.Context,
-	cmd model.UpsertPieceCommand,
+	cmd model.PieceCommand,
 ) (*content.Piece, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "piece.create"),
@@ -191,7 +191,7 @@ func (s *PieceService) Create(
 // Piece. Otherwise it returns an error.
 func (s *PieceService) Update(
 	ctx context.Context,
-	cmd model.UpsertPieceCommand,
+	cmd model.PieceCommand,
 ) (*content.Piece, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "piece.update"),

@@ -2,12 +2,13 @@ package model
 
 import "github.com/adamkadda/arman/internal/content"
 
-type UpsertComposerCommand struct {
+type ComposerCommand struct {
 	Composer ComposerIntent
 }
 
 type ComposerIntent struct {
 	Operation Operation
+	TempID    *int
 	Data      content.Composer
 }
 

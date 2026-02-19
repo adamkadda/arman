@@ -37,11 +37,16 @@ type composerRequest struct {
 	Operation model.Operation `json:"operation"`
 	ID        *int            `json:"id"`
 	Data      *composerData   `json:"data"`
+	TempID    *int            `json:"temp_id"`
 }
 
 func (r composerRequest) Validate() error {
 	if err := r.Operation.Validate(); err != nil {
 		return err
+	}
+
+	if r.Operation == model.OperationCreate && r.TempID == nil {
+		return model.ErrMissingTempID
 	}
 
 	if r.Data == nil {
@@ -51,13 +56,14 @@ func (r composerRequest) Validate() error {
 	return nil
 }
 
-func (r composerRequest) toCommand() model.UpsertComposerCommand {
+func (r composerRequest) toCommand() model.ComposerCommand {
 	composerIntent := model.ComposerIntent{
 		Operation: r.Operation,
+		TempID:    r.TempID,
 		Data:      r.Data.toDomain(r.ID),
 	}
 
-	return model.UpsertComposerCommand{
+	return model.ComposerCommand{
 		Composer: composerIntent,
 	}
 }
