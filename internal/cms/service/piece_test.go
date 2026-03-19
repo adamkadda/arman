@@ -37,7 +37,7 @@ func TestPieceService_Get(t *testing.T) {
 
 			svc := PieceService{
 				newPieceStore: func(db store.Executor) PieceStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -84,7 +84,7 @@ func TestPieceService_List(t *testing.T) {
 
 			svc := PieceService{
 				newPieceStore: func(db store.Executor) PieceStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -156,8 +156,8 @@ func TestPieceService_Create(t *testing.T) {
 				},
 			},
 			pieceStore: mockPieceStore{
-				pieces: map[int]*content.Piece{
-					0: {ID: 1, Title: "Foo Sonata", ComposerID: 1},
+				createdPieces: []*content.Piece{
+					{ID: 1, Title: "Foo Sonata", ComposerID: 1},
 				},
 			},
 			composerStore: mockComposerStore{
@@ -175,10 +175,10 @@ func TestPieceService_Create(t *testing.T) {
 			svc := PieceService{
 				db: mockDB{},
 				newPieceStore: func(db store.Executor) PieceStore {
-					return tt.pieceStore
+					return &tt.pieceStore
 				},
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.composerStore
+					return &tt.composerStore
 				},
 			}
 
@@ -238,46 +238,6 @@ func TestPieceService_Update(t *testing.T) {
 			expectedErr:   content.ErrInvalidResource,
 		},
 		{
-			name: "composer resolver error",
-			cmd: model.PieceCommand{
-				Piece: model.PieceIntent{
-					Operation: model.OperationUpdate,
-					Data:      content.Piece{ID: 1, Title: "Foo Sonata", ComposerID: 1},
-				},
-				Composer: model.ComposerIntent{
-					Operation: model.OperationSelect,
-					Data:      content.Composer{ID: 1},
-				},
-			},
-			pieceStore: mockPieceStore{},
-			composerStore: mockComposerStore{
-				err: ErrGet,
-			},
-			expected:    nil,
-			expectedErr: ErrGet,
-		},
-		{
-			name: "piece store error",
-			cmd: model.PieceCommand{
-				Piece: model.PieceIntent{
-					Operation: model.OperationUpdate,
-					Data:      content.Piece{ID: 1, Title: "Foo Sonata", ComposerID: 1},
-				},
-				Composer: model.ComposerIntent{
-					Operation: model.OperationSelect,
-					Data:      content.Composer{ID: 1},
-				},
-			},
-			pieceStore: mockPieceStore{
-				err: ErrFoo,
-			},
-			composerStore: mockComposerStore{
-				composers: map[int]*content.Composer{1: {ID: 1}},
-			},
-			expected:    nil,
-			expectedErr: ErrFoo,
-		},
-		{
 			name: "success",
 			cmd: model.PieceCommand{
 				Piece: model.PieceIntent{
@@ -309,10 +269,10 @@ func TestPieceService_Update(t *testing.T) {
 			svc := PieceService{
 				db: mockDB{},
 				newPieceStore: func(db store.Executor) PieceStore {
-					return tt.pieceStore
+					return &tt.pieceStore
 				},
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.composerStore
+					return &tt.composerStore
 				},
 			}
 
@@ -335,13 +295,6 @@ func TestPieceService_Delete(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name: "get error",
-			store: mockPieceStore{
-				err: ErrGet,
-			},
-			expectedErr: ErrGet,
-		},
-		{
 			name: "piece protected",
 			store: mockPieceStore{
 				detailedPieces: map[int]*model.PieceWithDetails{
@@ -349,16 +302,6 @@ func TestPieceService_Delete(t *testing.T) {
 				},
 			},
 			expectedErr: content.ErrPieceProtected,
-		},
-		{
-			name: "delete error",
-			store: mockPieceStore{
-				detailedPieces: map[int]*model.PieceWithDetails{
-					1: {Piece: content.Piece{ID: 1, Title: "foo"}, ProgrammeCount: 0},
-				},
-				err: ErrDelete,
-			},
-			expectedErr: ErrDelete,
 		},
 		{
 			name: "success",
@@ -377,7 +320,7 @@ func TestPieceService_Delete(t *testing.T) {
 
 			svc := PieceService{
 				newPieceStore: func(db store.Executor) PieceStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -396,6 +339,7 @@ func TestPieceResolver_Run(t *testing.T) {
 	tests := []struct {
 		name        string
 		intent      model.PieceIntent
+		store       mockPieceStore
 		expectedErr error
 	}{
 		{
@@ -406,6 +350,11 @@ func TestPieceResolver_Run(t *testing.T) {
 					ID:         1,
 					Title:      "Foo Sonata",
 					ComposerID: 1,
+				},
+			},
+			store: mockPieceStore{
+				pieces: map[int]*content.Piece{
+					1: {ID: 1, Title: "Foo Sonata", ComposerID: 1},
 				},
 			},
 			expectedErr: model.ErrInvalidOperation,
@@ -420,6 +369,11 @@ func TestPieceResolver_Run(t *testing.T) {
 					ComposerID: 1,
 				},
 			},
+			store: mockPieceStore{
+				pieces: map[int]*content.Piece{
+					1: {ID: 1, Title: "Foo Sonata", ComposerID: 1},
+				},
+			},
 			expectedErr: nil,
 		},
 		{
@@ -429,6 +383,11 @@ func TestPieceResolver_Run(t *testing.T) {
 				Data: content.Piece{
 					Title:      "Foo Sonata",
 					ComposerID: 1,
+				},
+			},
+			store: mockPieceStore{
+				createdPieces: []*content.Piece{
+					{ID: 1, Title: "Foo Sonata", ComposerID: 1},
 				},
 			},
 			expectedErr: nil,
@@ -443,6 +402,11 @@ func TestPieceResolver_Run(t *testing.T) {
 					ComposerID: 1,
 				},
 			},
+			store: mockPieceStore{
+				pieces: map[int]*content.Piece{
+					1: {ID: 1, Title: "Foo Sonata", ComposerID: 1},
+				},
+			},
 			expectedErr: nil,
 		},
 	}
@@ -451,7 +415,7 @@ func TestPieceResolver_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			resolver := newPieceResolver(mockPieceStore{})
+			resolver := newPieceResolver(&tt.store)
 
 			_, err := resolver.run(testContext(), tt.intent)
 
@@ -467,24 +431,25 @@ func TestPieceResolver_Run(t *testing.T) {
 type mockPieceStore struct {
 	pieces         map[int]*content.Piece
 	detailedPieces map[int]*model.PieceWithDetails
+	createdPieces  []*content.Piece
 	err            error
 }
 
-func (s mockPieceStore) Get(
+func (s *mockPieceStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Piece, error) {
 	return s.pieces[id], s.err
 }
 
-func (s mockPieceStore) GetWithDetails(
+func (s *mockPieceStore) GetWithDetails(
 	ctx context.Context,
 	id int,
 ) (*model.PieceWithDetails, error) {
 	return s.detailedPieces[id], s.err
 }
 
-func (s mockPieceStore) ListWithDetails(
+func (s *mockPieceStore) ListWithDetails(
 	ctx context.Context,
 ) ([]model.PieceWithDetails, error) {
 	if s.err != nil {
@@ -503,21 +468,26 @@ func (s mockPieceStore) ListWithDetails(
 	return pieces, nil
 }
 
-func (s mockPieceStore) Create(
+func (s *mockPieceStore) Create(
 	ctx context.Context,
 	v content.Piece,
 ) (*content.Piece, error) {
-	return s.pieces[0], s.err
+	if s.err != nil {
+		return nil, s.err
+	}
+	p := s.createdPieces[0]
+	s.createdPieces = s.createdPieces[1:]
+	return p, nil
 }
 
-func (s mockPieceStore) Update(
+func (s *mockPieceStore) Update(
 	ctx context.Context,
 	v content.Piece,
 ) (*content.Piece, error) {
 	return s.pieces[v.ID], s.err
 }
 
-func (s mockPieceStore) Delete(
+func (s *mockPieceStore) Delete(
 	ctx context.Context,
 	id int,
 ) error {

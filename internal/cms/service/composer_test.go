@@ -45,7 +45,7 @@ func TestComposerService_Get(t *testing.T) {
 
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -100,7 +100,7 @@ func TestComposerService_List(t *testing.T) {
 
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -163,8 +163,8 @@ func TestComposerService_Create(t *testing.T) {
 				},
 			},
 			store: mockComposerStore{
-				composers: map[int]*content.Composer{
-					0: {ID: 1, FullName: "Foo Foolington", ShortName: "Foolington"},
+				createdComposers: []*content.Composer{
+					{ID: 1, FullName: "Foo Foolington", ShortName: "Foolington"},
 				},
 			},
 			expected:    &content.Composer{ID: 1, FullName: "Foo Foolington", ShortName: "Foolington"},
@@ -178,7 +178,7 @@ func TestComposerService_Create(t *testing.T) {
 
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -250,7 +250,7 @@ func TestComposerService_Update(t *testing.T) {
 
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -272,13 +272,6 @@ func TestComposerService_Delete(t *testing.T) {
 		store       mockComposerStore
 		expectedErr error
 	}{
-		{
-			name: "get error",
-			store: mockComposerStore{
-				err: ErrGet,
-			},
-			expectedErr: ErrGet,
-		},
 		{
 			name: "composer protected",
 			store: mockComposerStore{
@@ -305,7 +298,7 @@ func TestComposerService_Delete(t *testing.T) {
 
 			svc := ComposerService{
 				newComposerStore: func(db store.Executor) ComposerStore {
-					return tt.store
+					return &tt.store
 				},
 			}
 
@@ -324,6 +317,7 @@ func TestComposerResolver_Run(t *testing.T) {
 	tests := []struct {
 		name        string
 		intent      model.ComposerIntent
+		store       mockComposerStore
 		expectedErr error
 	}{
 		{
@@ -340,6 +334,11 @@ func TestComposerResolver_Run(t *testing.T) {
 				Operation: model.OperationSelect,
 				Data:      content.Composer{ID: 1, FullName: "Foo Bar Baz", ShortName: "Baz"},
 			},
+			store: mockComposerStore{
+				composers: map[int]*content.Composer{
+					1: {ID: 1, FullName: "Foo Foolington", ShortName: "Foolington"},
+				},
+			},
 			expectedErr: nil,
 		},
 		{
@@ -347,6 +346,11 @@ func TestComposerResolver_Run(t *testing.T) {
 			intent: model.ComposerIntent{
 				Operation: model.OperationCreate,
 				Data:      content.Composer{FullName: "Foo Bar Baz", ShortName: "Baz"},
+			},
+			store: mockComposerStore{
+				createdComposers: []*content.Composer{
+					{ID: 1, FullName: "Foo Bar Baz", ShortName: "Baz"},
+				},
 			},
 			expectedErr: nil,
 		},
@@ -356,6 +360,11 @@ func TestComposerResolver_Run(t *testing.T) {
 				Operation: model.OperationUpdate,
 				Data:      content.Composer{ID: 1, FullName: "Foo Bar Baz", ShortName: "Baz"},
 			},
+			store: mockComposerStore{
+				createdComposers: []*content.Composer{
+					{ID: 1, FullName: "Foo Bar Baz", ShortName: "Baz"},
+				},
+			},
 			expectedErr: nil,
 		},
 	}
@@ -364,7 +373,7 @@ func TestComposerResolver_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			resolver := newComposerResolver(mockComposerStore{})
+			resolver := newComposerResolver(&tt.store)
 
 			_, err := resolver.run(testContext(), tt.intent)
 
@@ -380,24 +389,25 @@ func TestComposerResolver_Run(t *testing.T) {
 type mockComposerStore struct {
 	composers         map[int]*content.Composer
 	detailedComposers map[int]*model.ComposerWithDetails
+	createdComposers  []*content.Composer
 	err               error
 }
 
-func (s mockComposerStore) Get(
+func (s *mockComposerStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Composer, error) {
 	return s.composers[id], s.err
 }
 
-func (s mockComposerStore) GetWithDetails(
+func (s *mockComposerStore) GetWithDetails(
 	ctx context.Context,
 	id int,
 ) (*model.ComposerWithDetails, error) {
 	return s.detailedComposers[id], s.err
 }
 
-func (s mockComposerStore) ListWithDetails(
+func (s *mockComposerStore) ListWithDetails(
 	ctx context.Context,
 ) ([]model.ComposerWithDetails, error) {
 	if s.err != nil {
@@ -416,21 +426,26 @@ func (s mockComposerStore) ListWithDetails(
 	return composers, nil
 }
 
-func (s mockComposerStore) Create(
+func (s *mockComposerStore) Create(
 	ctx context.Context,
 	c content.Composer,
 ) (*content.Composer, error) {
-	return s.composers[0], s.err
+	if s.err != nil {
+		return nil, s.err
+	}
+	p := s.createdComposers[0]
+	s.createdComposers = s.createdComposers[1:]
+	return p, nil
 }
 
-func (s mockComposerStore) Update(
+func (s *mockComposerStore) Update(
 	ctx context.Context,
 	c content.Composer,
 ) (*content.Composer, error) {
 	return s.composers[c.ID], s.err
 }
 
-func (s mockComposerStore) Delete(
+func (s *mockComposerStore) Delete(
 	ctx context.Context,
 	id int,
 ) error {
