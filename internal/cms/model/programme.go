@@ -2,6 +2,16 @@ package model
 
 import "github.com/adamkadda/arman/internal/content"
 
+type ProgrammeCommand struct {
+	Programme ProgrammeIntent
+	Pieces    []PieceCommand
+}
+
+type ProgrammeIntent struct {
+	Operation Operation
+	Data      content.Programme
+}
+
 // ProgrameWithDetails is a wrapper around the Programme type. It includes additional
 // information on how many Pieces the Programme has, and how many published Events
 // reference that Programme.

@@ -29,38 +29,75 @@ func (h *ProgrammeHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /programmes/{id}", h.get)
 	mux.HandleFunc("GET /programmes", h.list)
 	mux.HandleFunc("POST /programmes", h.create)
-	mux.HandleFunc("PUT /programmes", h.update)
-	mux.HandleFunc("PUT /programmes/{id}/pieces", h.updatePieces)
+	mux.HandleFunc("PUT /programmes/{id}", h.update)
 	mux.HandleFunc("DELETE /programmes/{id}", h.delete)
 }
 
 type programmeRequest struct {
-	Title string `json:"programme_title"`
+	Operation model.Operation `json:"operation"`
+	ID        *int            `json:"id"`
+	Data      *programmeData  `json:"data"`
 }
 
-func (r *programmeRequest) toDomain() content.Programme {
-	return content.Programme{
-		Title: r.Title,
+func (r programmeRequest) Validate() error {
+	if err := r.Operation.Validate(); err != nil {
+		return err
+	}
+
+	if r.Data == nil {
+		return model.ErrMissingData
+	}
+
+	return nil
+}
+
+func (r programmeRequest) toCommand() model.ProgrammeCommand {
+	programmeIntent := model.ProgrammeIntent{
+		Operation: r.Operation,
+		Data:      r.Data.toDomain(r.ID),
+	}
+
+	pieceCommands := make([]model.PieceCommand, 0, len(r.Data.Pieces))
+
+	for _, pieceRequest := range r.Data.Pieces {
+		composerRequest := pieceRequest.Data.Composer
+
+		cmd := model.PieceCommand{
+			Piece: model.PieceIntent{
+				Operation: pieceRequest.Operation,
+				Data:      pieceRequest.Data.toDomain(pieceRequest.ID),
+			},
+			Composer: model.ComposerIntent{
+				Operation: composerRequest.Operation,
+				TempID:    composerRequest.TempID,
+				Data:      composerRequest.Data.toDomain(composerRequest.ID),
+			},
+		}
+
+		pieceCommands = append(pieceCommands, cmd)
+	}
+
+	return model.ProgrammeCommand{
+		Programme: programmeIntent,
+		Pieces:    pieceCommands,
 	}
 }
 
-func (r *programmeRequest) toDomainWithID(id int) content.Programme {
-	return content.Programme{
-		ID:    id,
-		Title: r.Title,
-	}
+type programmeData struct {
+	Title  string         `json:"title"`
+	Pieces []pieceRequest `json:"pieces"`
 }
 
-type programmeResponse struct {
-	ID    int    `json:"programme_id"`
-	Title string `json:"programme_title"`
-}
-
-func newProgrammeResponse(p *content.Programme) programmeResponse {
-	return programmeResponse{
-		ID:    p.ID,
-		Title: p.Title,
+func (d programmeData) toDomain(id *int) content.Programme {
+	programme := content.Programme{
+		Title: d.Title,
 	}
+
+	if id != nil {
+		programme.ID = *id
+	}
+
+	return programme
 }
 
 type programmeWithDetailsResponse struct {
@@ -96,9 +133,9 @@ func newProgrammePieceResponse(pp *content.ProgrammePiece) programmePieceRespons
 }
 
 type programmeWithPiecesResponse struct {
-	ID     int                      `json:"programme_id"`
-	Title  string                   `json:"programme_title"`
-	Pieces []programmePieceResponse `json:"programmes"`
+	ID     int                      `json:"id"`
+	Title  string                   `json:"title"`
+	Pieces []programmePieceResponse `json:"pieces"`
 }
 
 func newProgrammeWithPiecesResponse(
@@ -173,7 +210,15 @@ func (h *ProgrammeHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	programme, err := h.programmeService.Create(r.Context(), req.toDomain())
+	if err := req.Validate(); err != nil {
+		respondJSON(r.Context(), w,
+			http.StatusBadRequest,
+			pair("error", err.Error()),
+		)
+		return
+	}
+
+	programme, err := h.programmeService.Create(r.Context(), req.toCommand())
 	if err != nil {
 		if errors.Is(err, content.ErrInvalidResource) {
 			respondJSON(r.Context(), w,
@@ -190,7 +235,7 @@ func (h *ProgrammeHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := newProgrammeResponse(programme)
+	resp := newProgrammeWithPiecesResponse(programme)
 	respondJSON(r.Context(), w,
 		http.StatusCreated,
 		resp,
@@ -208,7 +253,9 @@ func (h *ProgrammeHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	programme, err := h.programmeService.Update(r.Context(), req.toDomainWithID(id))
+	req.ID = &id
+
+	programme, err := h.programmeService.Update(r.Context(), req.toCommand())
 	if err != nil {
 		switch {
 		case errors.Is(err, content.ErrInvalidResource):
@@ -230,41 +277,6 @@ func (h *ProgrammeHandler) update(w http.ResponseWriter, r *http.Request) {
 			)
 			return
 		}
-	}
-
-	resp := newProgrammeResponse(programme)
-	respondJSON(r.Context(), w,
-		http.StatusOK,
-		resp,
-	)
-}
-
-func (h *ProgrammeHandler) updatePieces(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(w, r)
-	if !ok {
-		return
-	}
-
-	req, ok := parseBody[[]int](w, r)
-	if !ok {
-		return
-	}
-
-	programme, err := h.programmeService.UpdatePieces(r.Context(), id, req)
-	if err != nil {
-		if errors.Is(err, content.ErrProgrammeImmutable) {
-			respondJSON(r.Context(), w,
-				http.StatusForbidden,
-				pair("error", "programme in use"),
-			)
-			return
-		}
-
-		respondJSON(r.Context(), w,
-			http.StatusInternalServerError,
-			pair("error", "internal server error"),
-		)
-		return
 	}
 
 	resp := newProgrammeWithPiecesResponse(programme)

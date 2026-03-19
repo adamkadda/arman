@@ -8,12 +8,12 @@ import (
 	"github.com/adamkadda/arman/internal/content"
 )
 
-type ProgrammeStore struct {
+type PostgresProgrammeStore struct {
 	db Executor
 }
 
-func NewProgrammeStore(db Executor) *ProgrammeStore {
-	return &ProgrammeStore{
+func NewPostgresProgrammeStore(db Executor) *PostgresProgrammeStore {
+	return &PostgresProgrammeStore{
 		db: db,
 	}
 }
@@ -38,7 +38,31 @@ func (r *programmeRow) toProgrammeWithDetails() model.ProgrammeWithDetails {
 	}
 }
 
-func (s *ProgrammeStore) Get(
+type programmePieceRow struct {
+	pieceID    int    `db:"piece_id"`
+	pieceTitle string `db:"piece_title"`
+	composerID int    `db:"composer_id"`
+	fullName   string `db:"full_name"`
+	shortName  string `db:"short_name"`
+	sequence   int    `db:"sequence"`
+}
+
+func (r *programmePieceRow) toProgrammePiece() content.ProgrammePiece {
+	return content.ProgrammePiece{
+		Piece: content.Piece{
+			ID:    r.pieceID,
+			Title: r.pieceTitle,
+		},
+		Composer: content.Composer{
+			ID:        r.composerID,
+			FullName:  r.fullName,
+			ShortName: r.shortName,
+		},
+		Sequence: r.sequence,
+	}
+}
+
+func (s *PostgresProgrammeStore) Get(
 	ctx context.Context,
 	id int,
 ) (*content.Programme, error) {
@@ -65,7 +89,7 @@ func (s *ProgrammeStore) Get(
 	return &programme, nil
 }
 
-func (s *ProgrammeStore) GetWithDetails(
+func (s *PostgresProgrammeStore) GetWithDetails(
 	ctx context.Context,
 	id int,
 ) (*model.ProgrammeWithDetails, error) {
@@ -103,7 +127,7 @@ func (s *ProgrammeStore) GetWithDetails(
 // was the alternative to an N+1 query approach of making multiple queries for each
 // Programme. It's a tradeoff between performance and adherence to a (strict) clean
 // separation of concerns.
-func (s *ProgrammeStore) ListWithDetails(
+func (s *PostgresProgrammeStore) ListWithDetails(
 	ctx context.Context,
 ) ([]model.ProgrammeWithDetails, error) {
 	query := `
@@ -139,7 +163,7 @@ func (s *ProgrammeStore) ListWithDetails(
 	return programmes, nil
 }
 
-func (s *ProgrammeStore) Create(
+func (s *PostgresProgrammeStore) Create(
 	ctx context.Context,
 	p content.Programme,
 ) (*content.Programme, error) {
@@ -170,91 +194,7 @@ func (s *ProgrammeStore) Create(
 	return &programme, nil
 }
 
-func (s *ProgrammeStore) Update(
-	ctx context.Context,
-	p content.Programme,
-) (*content.Programme, error) {
-	query := `
-	UPDATE programmes
-	SET
-		programme_title = $1
-	WHERE programme_id = $2
-	RETURNING
-		programme_id,
-		programme_title
-	`
-
-	pgxRows, err := s.db.Query(ctx, query,
-		p.Title,
-		p.ID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
-	}
-
-	row, err := collectRow[programmeRow](pgxRows)
-	if err != nil {
-		return nil, err
-	}
-
-	programme := row.toProgramme()
-
-	return &programme, nil
-}
-
-func (s *ProgrammeStore) Delete(
-	ctx context.Context,
-	id int,
-) error {
-	query := `
-	DELETE
-	FROM programmes
-	WHERE programme_id = $1
-	`
-
-	cmdTag, err := s.db.Exec(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("query failed: %w", err)
-	}
-
-	return checkAffected(cmdTag)
-}
-
-type ProgrammePieceStore struct {
-	db Executor
-}
-
-func NewProgrammePieceStore(db Executor) *ProgrammePieceStore {
-	return &ProgrammePieceStore{
-		db: db,
-	}
-}
-
-type programmePieceRow struct {
-	pieceID    int    `db:"piece_id"`
-	pieceTitle string `db:"piece_title"`
-	composerID int    `db:"composer_id"`
-	fullName   string `db:"full_name"`
-	shortName  string `db:"short_name"`
-	sequence   int    `db:"sequence"`
-}
-
-func (r *programmePieceRow) toProgrammePiece() content.ProgrammePiece {
-	return content.ProgrammePiece{
-		Piece: content.Piece{
-			ID:    r.pieceID,
-			Title: r.pieceTitle,
-		},
-		Composer: content.Composer{
-			ID:        r.composerID,
-			FullName:  r.fullName,
-			ShortName: r.shortName,
-		},
-		Sequence: r.sequence,
-	}
-}
-
-func (s *ProgrammePieceStore) ListByProgrammeID(
+func (s *PostgresProgrammeStore) ListPieces(
 	ctx context.Context,
 	id int,
 ) ([]content.ProgrammePiece, error) {
@@ -291,7 +231,7 @@ func (s *ProgrammePieceStore) ListByProgrammeID(
 	return programmePieces, nil
 }
 
-func (s *ProgrammePieceStore) Update(
+func (s *PostgresProgrammeStore) UpdatePieces(
 	ctx context.Context,
 	id int,
 	ids []int,
@@ -373,4 +313,54 @@ func (s *ProgrammePieceStore) Update(
 	}
 
 	return programmePieces, nil
+}
+
+func (s *PostgresProgrammeStore) Update(
+	ctx context.Context,
+	p content.Programme,
+) (*content.Programme, error) {
+	query := `
+	UPDATE programmes
+	SET
+		programme_title = $1
+	WHERE programme_id = $2
+	RETURNING
+		programme_id,
+		programme_title
+	`
+
+	pgxRows, err := s.db.Query(ctx, query,
+		p.Title,
+		p.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+
+	row, err := collectRow[programmeRow](pgxRows)
+	if err != nil {
+		return nil, err
+	}
+
+	programme := row.toProgramme()
+
+	return &programme, nil
+}
+
+func (s *PostgresProgrammeStore) Delete(
+	ctx context.Context,
+	id int,
+) error {
+	query := `
+	DELETE
+	FROM programmes
+	WHERE programme_id = $1
+	`
+
+	_, err := s.db.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("query failed: %w", err)
+	}
+
+	return nil
 }

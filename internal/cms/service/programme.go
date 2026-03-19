@@ -12,13 +12,36 @@ import (
 )
 
 type ProgrammeService struct {
-	db DB
+	db                DB
+	newProgrammeStore func(db store.Executor) ProgrammeStore
+	newPieceStore     func(db store.Executor) PieceStore
+	newComposerStore  func(db store.Executor) ComposerStore
 }
 
 func NewProgrammeService(db DB) *ProgrammeService {
 	return &ProgrammeService{
 		db: db,
+		newProgrammeStore: func(db store.Executor) ProgrammeStore {
+			return store.NewPostgresProgrammeStore(db)
+		},
+		newPieceStore: func(db store.Executor) PieceStore {
+			return store.NewPostgresPieceStore(db)
+		},
+		newComposerStore: func(db store.Executor) ComposerStore {
+			return store.NewPostgresComposerStore(db)
+		},
 	}
+}
+
+type ProgrammeStore interface {
+	Get(context.Context, int) (*content.Programme, error)
+	GetWithDetails(context.Context, int) (*model.ProgrammeWithDetails, error)
+	ListWithDetails(context.Context) ([]model.ProgrammeWithDetails, error)
+	ListPieces(context.Context, int) ([]content.ProgrammePiece, error)
+	UpdatePieces(context.Context, int, []int) ([]content.ProgrammePiece, error)
+	Create(context.Context, content.Programme) (*content.Programme, error)
+	Update(context.Context, content.Programme) (*content.Programme, error)
+	Delete(context.Context, int) error
 }
 
 // Get returns a Programme with its ProgrammePieces sorted by sequence.
@@ -35,7 +58,7 @@ func (s *ProgrammeService) Get(
 		"get programme",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.db)
+	programmeStore := s.newProgrammeStore(s.db)
 
 	p, err := programmeStore.Get(ctx, id)
 	if err != nil {
@@ -48,9 +71,7 @@ func (s *ProgrammeService) Get(
 		return nil, err
 	}
 
-	programmePieceStore := store.NewProgrammePieceStore(s.db)
-
-	pp, err := programmePieceStore.ListByProgrammeID(ctx, id)
+	pp, err := programmeStore.ListPieces(ctx, id)
 	if err != nil {
 		logger.Error(
 			"list programme pieces failed",
@@ -81,7 +102,7 @@ func (s *ProgrammeService) List(
 		"list programmes",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.db)
+	programmeStore := s.newProgrammeStore(s.db)
 
 	programmeList, err := programmeStore.ListWithDetails(ctx)
 	if err != nil {
@@ -97,15 +118,18 @@ func (s *ProgrammeService) List(
 	return programmeList, nil
 }
 
-// Create attempts to create a Programme.
+// Create creates a new programme along with its associated pieces and composers,
+// all within a single transaction.
 //
-// Create first validates the passed Programme. The passed Composer should
-// describe the desired state. Upon successful creation, Create returns the
-// newly created Programme. Otherwise it returns an error.
+// Each piece in cmd.Pieces is resolved individually using its declared operation
+// (select, create, or update). Composers are resolved the same way, with one
+// exception: when multiple pieces declare a new composer with the same TempID,
+// the composer is created only once and reused across those pieces. This
+// deduplication is scoped to a single call.
 func (s *ProgrammeService) Create(
 	ctx context.Context,
-	p content.Programme,
-) (*content.Programme, error) {
+	cmd model.ProgrammeCommand,
+) (*model.ProgrammeWithPieces, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "programme.create"),
 	)
@@ -114,18 +138,39 @@ func (s *ProgrammeService) Create(
 		"create programme",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.db)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		logger.Error(
+			"begin transaction failed",
+			slog.String("step", "tx.begin"),
+			slog.Any("error", err),
+		)
 
-	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	if cmd.Programme.Operation != model.OperationCreate {
 		logger.Warn(
-			"validate programme rejected",
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
+	if err := cmd.Programme.Data.Validate(); err != nil {
+		logger.Warn(
+			"invalid programme",
 			slog.String("reason", reason(err)),
 		)
 
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	programme, err := programmeStore.Create(ctx, p)
+	programmeStore := s.newProgrammeStore(tx)
+
+	programme, err := programmeStore.Create(ctx, cmd.Programme.Data)
 	if err != nil {
 		logger.Error(
 			"create programme failed",
@@ -136,27 +181,58 @@ func (s *ProgrammeService) Create(
 		return nil, err
 	}
 
-	return programme, nil
+	pieceIds := make([]int, 0, len(cmd.Pieces))
+
+	programmePieceResolver := newProgrammePieceResolver(
+		programmeStore,
+		newPieceResolver(s.newPieceStore(tx)),
+		newComposerResolver(s.newComposerStore(tx)),
+	)
+
+	for _, pieceCommand := range cmd.Pieces {
+		piece, err := programmePieceResolver.run(
+			logging.WithLogger(ctx, logger),
+			pieceCommand,
+		)
+		if err != nil {
+			return nil, err
+		}
+		pieceIds = append(pieceIds, piece.ID)
+	}
+
+	programmePieces, err := programmeStore.UpdatePieces(ctx, programme.ID, pieceIds)
+	if err != nil {
+		logger.Error(
+			"update programme pieces failed",
+			slog.String("step", "programme.update_pieces"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		logger.Error(
+			"commit transaction failed",
+			slog.String("step", "tx.commit"),
+			slog.Any("error", err),
+		)
+
+		return nil, err
+	}
+
+	return &model.ProgrammeWithPieces{
+		Programme: programme,
+		Pieces:    programmePieces,
+	}, nil
 }
 
-// Update attempts to update a Programme's metadata.
-//
-// Update first validates the Programme passed in, then it attempts to edit
-// the Programme identified by its id. Programmes are immutable if it is
-// referenced by at least one published Event.
-//
-// The passed in Programme should describe the desired state. Upon a successful
-// update, Update returns the updated Programme. Otherwise it returns an error.
-//
-// Update can only update the metadata directly associated to the Programme,
-// not its pieces. To update a Programme's pieces, see UpdatePieces.
 func (s *ProgrammeService) Update(
 	ctx context.Context,
-	p content.Programme,
-) (*content.Programme, error) {
+	cmd model.ProgrammeCommand,
+) (*model.ProgrammeWithPieces, error) {
 	logger := logging.FromContext(ctx).With(
 		slog.String("operation", "programme.update"),
-		slog.Int("programme_id", p.ID),
 	)
 
 	logger.Info(
@@ -175,39 +251,27 @@ func (s *ProgrammeService) Update(
 	}
 	defer tx.Rollback(ctx)
 
-	if err := p.Validate(); err != nil {
+	if cmd.Programme.Operation != model.OperationUpdate {
 		logger.Warn(
-			"validate programme rejected",
+			"operation mismatch",
+			slog.String("reason", reason(content.ErrOperationMismatch)),
+		)
+
+		return nil, content.ErrOperationMismatch
+	}
+
+	if err := cmd.Programme.Data.Validate(); err != nil {
+		logger.Warn(
+			"invalid programme",
 			slog.String("reason", reason(err)),
 		)
 
 		return nil, fmt.Errorf("%w: %s", content.ErrInvalidResource, err)
 	}
 
-	programmeStore := store.NewProgrammeStore(s.db)
+	programmeStore := s.newProgrammeStore(tx)
 
-	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, p.ID)
-	if err != nil {
-		logger.Error(
-			"get programme with details failed",
-			slog.String("step", "programme.get_with_details"),
-			slog.Any("error", err),
-		)
-
-		return nil, err
-	}
-
-	if programmeWithDetails.EventCount > 0 {
-		logger.Warn(
-			"update programme blocked",
-			slog.String("reason", reason(content.ErrProgrammeImmutable)),
-			slog.Int("event_count", programmeWithDetails.EventCount),
-		)
-
-		return nil, content.ErrProgrammeImmutable
-	}
-
-	programme, err := programmeStore.Update(ctx, p)
+	programme, err := programmeStore.Update(ctx, cmd.Programme.Data)
 	if err != nil {
 		logger.Error(
 			"update programme failed",
@@ -218,97 +282,30 @@ func (s *ProgrammeService) Update(
 		return nil, err
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		logger.Error(
-			"commit transaction failed",
-			slog.String("step", "tx.commit"),
-			slog.Any("error", err),
-		)
+	pieceIds := make([]int, 0, len(cmd.Pieces))
 
-		return nil, err
-	}
-
-	return programme, nil
-}
-
-// UpdatePieces attempts to update a Programme's pieces.
-//
-// The Programme is identified by the passed id. The desired pieces are identified
-// by their ids (the corresponding parameter has the same name). Sequence is
-// inferred by the array's order. Persistence checks are the store layer's
-// responsibility, so no programme piece validation happens at this layer.
-//
-// Programmes are immutable if referenced by at least one published Event.
-//
-// UpdatePieces can only update the pieces of a Programme, not its metadata.
-// To update a Programme's metadata, see Update.
-func (s *ProgrammeService) UpdatePieces(
-	ctx context.Context,
-	id int,
-	ids []int,
-) (*model.ProgrammeWithPieces, error) {
-	logger := logging.FromContext(ctx).With(
-		slog.String("operation", "programme.update_pieces"),
-		slog.Int("programme_id", id),
+	programmePieceResolver := newProgrammePieceResolver(
+		programmeStore,
+		newPieceResolver(s.newPieceStore(tx)),
+		newComposerResolver(s.newComposerStore(tx)),
 	)
 
-	logger.Info(
-		"update programme pieces",
-	)
-
-	tx, err := s.db.Begin(ctx)
-	if err != nil {
-		logger.Error(
-			"begin transaction failed",
-			slog.String("step", "tx.begin"),
-			slog.Any("error", err),
+	for _, pieceCommand := range cmd.Pieces {
+		piece, err := programmePieceResolver.run(
+			logging.WithLogger(ctx, logger),
+			pieceCommand,
 		)
-
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	programmeStore := store.NewProgrammeStore(tx)
-
-	p, err := programmeStore.Get(ctx, id)
-	if err != nil {
-		logger.Error(
-			"get programme failed",
-			slog.String("step", "programme.get"),
-			slog.Any("error", err),
-		)
-
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+		pieceIds = append(pieceIds, piece.ID)
 	}
 
-	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, id)
-	if err != nil {
-		logger.Error(
-			"get programme with details failed",
-			slog.String("step", "programme.get_with_details"),
-			slog.Any("error", err),
-		)
-
-		return nil, err
-	}
-
-	if programmeWithDetails.EventCount > 0 {
-		logger.Warn(
-			"update programme pieces blocked",
-			slog.String("reason", reason(content.ErrProgrammeImmutable)),
-			slog.Int("event_count", programmeWithDetails.EventCount),
-		)
-
-		return nil, content.ErrProgrammeImmutable
-	}
-
-	programmePieceStore := store.NewProgrammePieceStore(tx)
-
-	pp, err := programmePieceStore.Update(ctx, id, ids)
+	programmePieces, err := programmeStore.UpdatePieces(ctx, programme.ID, pieceIds)
 	if err != nil {
 		logger.Error(
 			"update programme pieces failed",
-			slog.String("step", "programme_piece.update"),
+			slog.String("step", "programme.update_pieces"),
 			slog.Any("error", err),
 		)
 
@@ -325,12 +322,10 @@ func (s *ProgrammeService) UpdatePieces(
 		return nil, err
 	}
 
-	programme := &model.ProgrammeWithPieces{
-		Programme: p,
-		Pieces:    pp,
-	}
-
-	return programme, nil
+	return &model.ProgrammeWithPieces{
+		Programme: programme,
+		Pieces:    programmePieces,
+	}, nil
 }
 
 // Delete attempts to delete a Programme by id.
@@ -350,7 +345,7 @@ func (s *ProgrammeService) Delete(
 		"delete programme",
 	)
 
-	programmeStore := store.NewProgrammeStore(s.db)
+	programmeStore := s.newProgrammeStore(s.db)
 
 	programmeWithDetails, err := programmeStore.GetWithDetails(ctx, id)
 	if err != nil {
@@ -385,4 +380,56 @@ func (s *ProgrammeService) Delete(
 	}
 
 	return nil
+}
+
+type programmePieceResolver struct {
+	programmeStore    ProgrammeStore
+	pieceResolver     *pieceResolver
+	composerResolver  *composerResolver
+	composersByTempID map[int]*content.Composer
+}
+
+func newProgrammePieceResolver(
+	programmeStore ProgrammeStore,
+	pieceResolver *pieceResolver,
+	composerResolver *composerResolver,
+) *programmePieceResolver {
+	return &programmePieceResolver{
+		programmeStore:    programmeStore,
+		pieceResolver:     pieceResolver,
+		composerResolver:  composerResolver,
+		composersByTempID: make(map[int]*content.Composer),
+	}
+}
+
+func (r *programmePieceResolver) run(
+	ctx context.Context,
+	cmd model.PieceCommand,
+) (*content.Piece, error) {
+	var (
+		composer *content.Composer
+		err      error
+		ok       bool
+	)
+	if cmd.Composer.Operation == model.OperationCreate {
+		composer, ok = r.composersByTempID[*cmd.Composer.TempID]
+		if !ok {
+			composer, err = r.composerResolver.run(ctx, cmd.Composer)
+			if err != nil {
+				return nil, err
+			}
+			r.composersByTempID[*cmd.Composer.TempID] = composer
+		}
+	} else {
+		composer, err = r.composerResolver.run(ctx, cmd.Composer)
+		if err != nil {
+			return nil, err
+		}
+	}
+	cmd.Piece.Data.ComposerID = composer.ID
+	piece, err := r.pieceResolver.run(ctx, cmd.Piece)
+	if err != nil {
+		return nil, err
+	}
+	return piece, nil
 }
